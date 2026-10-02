@@ -1,11 +1,11 @@
 /*
   pc817_two_inputs.ino
-  Reads two 24 V signals through PC817 optocouplers on D2 and D3 (Arduino UNO R4,
-  also works on an UNO R3) and prints every edge with its time and the duration
+  Reads two 24 V signals through PC817 optocouplers on D2 and D3 (Arduino UNO R4 WiFi
+  or UNO Q; any UNO-format board) and prints every edge with its time and the duration
   of the state that just ended. No debounce: the point of the bench is to see
   bounce and short pulses.
 
-  Wiring: see docs/pc817_bench.pdf. The board has external 10 k pull-ups, so the
+  Wiring: see docs/pc817_bench.pdf. The board has external 10 k pull-ups to IOREF, so the
   pins are plain INPUTs. 24 V present -> optocoupler conducts -> pin LOW.
 */
 
