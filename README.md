@@ -78,6 +78,8 @@ before plugging the bench onto a UNO Q.
 | `kicad/` | generated KiCad project: open `pc817_bench.kicad_pro` |
 | `docs/` | schematic (PDF, SVG), board layers (SVG), 3D view (PNG) |
 | `firmware/pc817_two_inputs/` | Arduino sketch that prints every edge with its timing |
+| `generate_protoboard.py` | writes `protoboard/`: the same circuit as a hole-by-hole build plan for a proto shield with isolated pads, checked against the schematic's netlist. Needs matplotlib |
+| `protoboard/` | [BUILD.md](protoboard/BUILD.md) (parts, bridges, wires), `layout.png`, `layout.pdf` (1:1) |
 | `check.sh` | regenerate everything, run KiCad's schematic and board rule checks, export `docs/` |
 
 ## Use

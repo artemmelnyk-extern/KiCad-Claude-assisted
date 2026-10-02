@@ -23,4 +23,5 @@ $KICAD_CLI sch export svg -o docs $SCH
 $KICAD_CLI pcb export svg -o docs/pcb_layout.svg --layers "F.Cu,B.Cu,F.SilkS,Edge.Cuts" \
     --mode-single --page-size-mode 2 --exclude-drawing-sheet $PCB
 $KICAD_CLI pcb render -o docs/pcb_3d_top.png -w 1400 --height 1000 --side top --background opaque $PCB
+python3 generate_protoboard.py     # proto-shield plan, checked against the netlist (needs matplotlib)
 echo "OK: schematic and board rule checks passed, docs/ updated"
