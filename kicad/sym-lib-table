@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "bench")(type "KiCad")(uri "${KIPRJMOD}/bench.kicad_sym")(options "")(descr "PC817 bench symbols"))
+)

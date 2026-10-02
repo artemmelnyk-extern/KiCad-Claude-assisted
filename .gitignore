@@ -1,0 +1,9 @@
+# KiCad local state and backups
+*.kicad_prl
+*-backups/
+*.lck
+fp-info-cache
+~*.lck
+# check output
+erc.rpt
+__pycache__/
