@@ -7,3 +7,5 @@ fp-info-cache
 # check output
 erc.rpt
 __pycache__/
+drc.rpt
+kicad/*.net
