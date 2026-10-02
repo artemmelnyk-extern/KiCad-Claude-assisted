@@ -144,6 +144,11 @@ the tracks segment by segment. There is no autorouter.
 PC817: 4-pin DIP, pin 1 anode, 2 cathode, 3 emitter, 4 collector; current transfer ratio 50–600 % at
 5 mA; isolation 5000 Vrms. Datasheets are available from Sharp and from second-source manufacturers.
 
+## Hand-built version
+
+The branch `proto-shield` adds a build plan for the same circuit on a proto shield with isolated
+pads: a hole-by-hole layout, solder bridges and wires, checked against this schematic's netlist.
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE). It covers the script, the sketch and the generated KiCad files.
