@@ -31,8 +31,10 @@ def pin(num, name, x, y, ang, length=1.27):
             % (x, y, ang, length, name, FONT, num, FONT))
 
 
-def libsym(name, ref, graphics, pins, hide_names=True, name_offset=0):
+def libsym(name, ref, graphics, pins, hide_names=True, name_offset=0, hide_numbers=False):
     hide = "(pin_names (offset %g) hide)" % name_offset if hide_names else "(pin_names (offset %g))" % name_offset
+    if hide_numbers:
+        hide = "(pin_numbers hide) " + hide
     return """(symbol "bench:%s" %s (in_bom yes) (on_board yes)
       (property "Reference" "%s" (at 0 0 0) %s)
       (property "Value" "%s" (at 0 0 0) %s)
@@ -60,8 +62,29 @@ PINS = {
     "D_V": {"1": (0, 3.81), "2": (0, -3.81)},            # 1 = cathode (top), 2 = anode (bottom)
     "PC817": {"1": (-7.62, 2.54), "2": (-7.62, -2.54), "4": (7.62, 2.54), "3": (7.62, -2.54)},
     "CONN3": {"1": (5.08, 2.54), "2": (5.08, 0), "3": (5.08, -2.54)},
-    "CONN4": {"1": (-5.08, 3.81), "2": (-5.08, 1.27), "3": (-5.08, -1.27), "4": (-5.08, -3.81)},
 }
+
+# Arduino UNO R4 WiFi: header pins as printed on the board.
+# Left side: power header, extra OFF/VRTC header, analog header. Right side: digital headers.
+UNO_LEFT = ["BOOT", "IOREF", "RESET", "3V3", "5V", "GND1", "GND2", "VIN", "OFF", "VRTC",
+            "A0", "A1", "A2", "A3", "A4", "A5"]
+UNO_RIGHT = ["SCL", "SDA", "AREF", "GND3", "D13", "D12", "D11", "D10", "D9", "D8",
+             "D7", "D6", "D5", "D4", "D3", "D2", "D1", "D0"]
+UNO_TOP = 21.59
+PINS["UNO_R4_WIFI"] = {}
+for i, n in enumerate(UNO_LEFT):
+    PINS["UNO_R4_WIFI"][n] = (-15.24, UNO_TOP - 2.54 * i)
+for i, n in enumerate(UNO_RIGHT):
+    PINS["UNO_R4_WIFI"][n] = (15.24, UNO_TOP - 2.54 * i)
+
+
+def uno_pins():
+    out = []
+    for n, (x, y) in PINS["UNO_R4_WIFI"].items():
+        shown = "GND" if n.startswith("GND") else n
+        out.append(pin(n, shown, x, y, 0 if x < 0 else 180, 2.54))
+    return out
+
 
 LIB = [
     libsym("R_H", "R", [rect(-2.54, -1.016, 2.54, 1.016)],
@@ -97,10 +120,8 @@ LIB = [
     libsym("CONN3", "J", [rect(-6.35, -5.08, 2.54, 5.08, "background")],
            [pin("1", "IN1_24V", 5.08, 2.54, 180, 2.54), pin("2", "IN2_24V", 5.08, 0, 180, 2.54),
             pin("3", "GND_24V", 5.08, -2.54, 180, 2.54)], hide_names=False, name_offset=0.508),
-    libsym("CONN4", "J", [rect(-2.54, -6.35, 6.35, 6.35, "background")],
-           [pin("1", "5V", -5.08, 3.81, 0, 2.54), pin("2", "D2", -5.08, 1.27, 0, 2.54),
-            pin("3", "D3", -5.08, -1.27, 0, 2.54), pin("4", "GND", -5.08, -3.81, 0, 2.54)],
-           hide_names=False, name_offset=0.508),
+    libsym("UNO_R4_WIFI", "A", [rect(-12.7, -24.13, 12.7, 24.13, "background")], uno_pins(),
+           hide_names=False, name_offset=0.508, hide_numbers=True),
 ]
 
 items = []
@@ -137,6 +158,10 @@ def label(name, p, right=False):
                  % (name, p[0], p[1], just, uid()))
 
 
+def no_connect(p):
+    items.append("(no_connect (at %g %g) (uuid %s))" % (p[0], p[1], uid()))
+
+
 def text(s, x, y, size=1.27):
     items.append('(text "%s" (at %g %g 0) (effects (font (size %g %g)) (justify left bottom)) (uuid %s))'
                  % (s, x, y, size, size, uid()))
@@ -145,8 +170,8 @@ def text(s, x, y, size=1.27):
 def channel(k, y):
     """One input channel on the horizontal line y. k = 1 or 2."""
     n_in, n_out = "IN%d_24V" % k, "D%d" % (k + 1)
-    ra = place("R_H", "R%d" % (2 * k - 1), "2.2k", 71.12, y)
-    rb = place("R_H", "R%d" % (2 * k), "2.2k", 81.28, y)
+    ra = place("R_H", "R%d" % (2 * k - 1), "2.2k", 71.12, y, ref_dy=-5.08, val_dy=-2.54)
+    rb = place("R_H", "R%d" % (2 * k), "2.2k", 81.28, y, ref_dy=-5.08, val_dy=-2.54)
     r = {"1": ra["1"], "2": rb["2"]}
     wire(ra["2"], rb["1"])
     led = place("LED_H", "D%d" % k, "LED red", 97.79, y, ref_dy=-5.08)
@@ -177,12 +202,18 @@ j1 = place("CONN3", "J1", "24V inputs", 30.48, 96.52, ref_dx=-1.27, ref_dy=-7.62
 for num, name in (("1", "IN1_24V"), ("2", "IN2_24V"), ("3", "GND_24V")):
     end = (j1[num][0] + 12.7, j1[num][1])
     wire(j1[num], end); label(name, end, right=True)
-j2 = place("CONN4", "J2", "Arduino UNO R4", 185.42, 96.52, ref_dx=1.27, ref_dy=-8.89, val_dx=1.27, val_dy=8.89)
-for num, name in (("1", "+5V"), ("2", "D2"), ("3", "D3"), ("4", "GND")):
-    end = (j2[num][0] - 12.7, j2[num][1])
-    wire(end, j2[num]); label(name, end)
+a1 = place("UNO_R4_WIFI", "A1", "Arduino UNO R4 WiFi", 200.66, 96.52, ref_dy=-26.67, val_dy=26.67)
+UNO_NETS = {"5V": "+5V", "GND1": "GND", "GND2": "GND", "GND3": "GND", "D2": "D2", "D3": "D3"}
+for num, p in a1.items():
+    if num not in UNO_NETS:
+        no_connect(p)
+        continue
+    left = p[0] < 200.66
+    end = (p[0] - 10.16, p[1]) if left else (p[0] + 10.16, p[1])
+    wire(p, end)
+    label(UNO_NETS[num], end, right=not left)
 
-text("PC817 24 V input test bench - 2 channels - Arduino UNO R4", 25.4, 30.48, 2.54)
+text("PC817 24 V input test bench - 2 channels - Arduino UNO R4 WiFi", 25.4, 30.48, 2.54)
 text("If = (24 V - 1.2 V opto - 2.0 V LED) / 4.4 k = 4.7 mA.  Each 2.2 k (1/4 W): 49 mW at 24 V, 75 mW at 28.8 V.", 25.4, 38.1)
 text("1N4148 protects both LEDs against a reversed input (PC817 VR max = 6 V).", 25.4, 41.91)
 text("GND_24V and GND are NOT connected: this is the isolation barrier.", 25.4, 45.72)
@@ -193,7 +224,7 @@ items.append("(polyline (pts (xy 119.38 55.88) (xy 119.38 144.78)) (stroke (widt
 sch = """(kicad_sch (version 20230121) (generator eeschema)
   (uuid %s)
   (paper "A4")
-  (title_block (title "PC817 24 V input test bench") (date "2026-10-02") (rev "0.2")
+  (title_block (title "PC817 24 V input test bench") (date "2026-10-02") (rev "0.3")
     (comment 1 "Generated by generate.py - edit the script, not this file"))
   (lib_symbols
     %s)

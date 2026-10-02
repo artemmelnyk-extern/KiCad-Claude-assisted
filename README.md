@@ -64,7 +64,7 @@ overwritten by the next run.
 
 `generate.py` uses no KiCad API. It writes KiCad's text file format (S-expressions) directly:
 
-- the symbols (resistor, LED, diode, PC817, connectors) are defined in the script and embedded in the
+- the symbols (resistor, LED, diode, PC817, input connector, Arduino UNO R4 WiFi) are defined in the script and embedded in the
   schematic, and also written to `kicad/bench.kicad_sym`;
 - `place()`, `wire()`, `label()` and `junction()` append one schematic item each;
 - `channel(k, y)` draws one complete input channel, and is called twice.
@@ -74,7 +74,8 @@ overwritten by the next run.
 - The schematic has **no footprints**: it describes a breadboard bench, not a PCB.
 - The files are written in the KiCad 7 format. KiCad 8 and later open them and show a notice that the
   file will be converted when saved. Checked with KiCad 10.0.6: loads, 0 rule-check violations.
-- The Arduino is drawn as a 4-pin connector (5V, D2, D3, GND).
+- The Arduino UNO R4 WiFi is drawn as one symbol with its header pins as printed on the board. Only
+  5V, GND, D2 and D3 are used; the other pins carry no-connect marks. The symbol has no footprint.
 - A single optocoupler channel cannot detect its own failure: a shorted output transistor reads as
   "24 V present". Do not use one channel alone for a safety function.
 
