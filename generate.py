@@ -62,7 +62,8 @@ PINS = {
     "LED_H": {"2": (-3.81, 0), "1": (3.81, 0)},          # 2 = anode (left), 1 = cathode (right)
     "D_V": {"1": (0, 3.81), "2": (0, -3.81)},            # 1 = cathode (top), 2 = anode (bottom)
     "PC817": {"1": (-7.62, 2.54), "2": (-7.62, -2.54), "4": (7.62, 2.54), "3": (7.62, -2.54)},
-    "CONN3": {"1": (5.08, 2.54), "2": (5.08, 0), "3": (5.08, -2.54)},
+    "CONN6": {str(i + 1): (5.08, 6.35 - 2.54 * i) for i in range(6)},
+    "FUSE_H": {"1": (-3.81, 0), "2": (3.81, 0)},
 }
 
 # Arduino UNO shield header, common to the UNO R4 WiFi and the UNO Q. Only pins present
@@ -99,10 +100,15 @@ FOOTPRINTS = {
     "LED_H": "LED_THT:LED_D3.0mm",
     "D_V": "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal",
     "PC817": "Package_DIP:DIP-4_W7.62mm",
-    "CONN3": "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-3_1x03_P5.00mm_Horizontal",
+    "CONN6": "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-6_1x06_P5.00mm_Horizontal",
+    "FUSE_H": "Fuse:Fuse_Littelfuse_372_D8.50mm",
     "UNO_R4_WIFI": "Module:Arduino_UNO_R3",
 }
 
+
+# Terminal block, top to bottom. Each e-stop button is wired between ESn+ and ESn.
+J1_PINS = ["24V_IN", "ES1+", "ES1", "ES2+", "ES2", "0V"]
+J1_NETS = ["+24V_IN", "+24V", "ES1", "+24V", "ES2", "GND_24V"]
 
 LIB = [
     libsym("R_H", "R", [rect(-2.54, -1.016, 2.54, 1.016)],
@@ -135,9 +141,11 @@ LIB = [
             poly([(1.778, -0.508), (3.81, -2.54), (5.08, -2.54)])],
            [pin("1", "A", -7.62, 2.54, 0, 2.54), pin("2", "K", -7.62, -2.54, 0, 2.54),
             pin("4", "C", 7.62, 2.54, 180, 2.54), pin("3", "E", 7.62, -2.54, 180, 2.54)]),
-    libsym("CONN3", "J", [rect(-6.35, -5.08, 2.54, 5.08, "background")],
-           [pin("1", "IN1_24V", 5.08, 2.54, 180, 2.54), pin("2", "IN2_24V", 5.08, 0, 180, 2.54),
-            pin("3", "GND_24V", 5.08, -2.54, 180, 2.54)], hide_names=False, name_offset=0.508),
+    libsym("CONN6", "J", [rect(-7.62, -8.89, 2.54, 8.89, "background")],
+           [pin(str(i + 1), n, 5.08, 6.35 - 2.54 * i, 180, 2.54) for i, n in enumerate(J1_PINS)],
+           hide_names=False, name_offset=0.508),
+    libsym("FUSE_H", "F", [rect(-2.54, -1.016, 2.54, 1.016), poly([(-2.54, 0), (2.54, 0)])],
+           [pin("1", "~", -3.81, 0, 0), pin("2", "~", 3.81, 0, 180)]),
     libsym("UNO_R4_WIFI", "A", [rect(-12.7, -24.13, 12.7, 24.13, "background")], uno_pins(),
            hide_names=False, name_offset=0.508, hide_numbers=True),
 ]
@@ -186,10 +194,10 @@ def text(s, x, y, size=1.27):
 
 
 def channel(k, y):
-    """One input channel on the horizontal line y. k = 1 or 2."""
-    n_in, n_out = "IN%d_24V" % k, "D%d" % (k + 1)
-    ra = place("R_H", "R%d" % (2 * k - 1), "2.2k", 71.12, y, ref_dy=-5.08, val_dy=-2.54)
-    rb = place("R_H", "R%d" % (2 * k), "2.2k", 81.28, y, ref_dy=-5.08, val_dy=-2.54)
+    """One e-stop input channel on the horizontal line y. k = 1 or 2."""
+    n_in, n_out = "ES%d" % k, "D%d" % (k + 1)
+    ra = place("R_H", "R%d" % (2 * k - 1), "1.5k", 71.12, y, ref_dy=-5.08, val_dy=-2.54)
+    rb = place("R_H", "R%d" % (2 * k), "1.5k", 81.28, y, ref_dy=-5.08, val_dy=-2.54)
     r = {"1": ra["1"], "2": rb["2"]}
     wire(ra["2"], rb["1"])
     led = place("LED_H", "D%d" % k, "LED red", 97.79, y, ref_dy=-5.08)
@@ -209,17 +217,21 @@ def channel(k, y):
     wire(rp["2"], (rp["2"][0], y))
     wire(rp["1"], (rp["1"][0], y - 12.7)); label("IOREF", (rp["1"][0], y - 12.7))
     wire(u["3"], (152.4, u["3"][1])); label("GND", (152.4, u["3"][1]), right=True)
-    text("Channel %d: 24 V present -> %s LOW, LED lit" % (k, n_out), 60.96, y - 15.24)
+    text("E-stop %d: button released (contact closed) -> %s LOW, LED lit" % (k, n_out), 60.96, y - 15.24)
 
 
 channel(1, 71.12)
 channel(2, 121.92)
 
 # connectors
-j1 = place("CONN3", "J1", "24V inputs", 30.48, 96.52, ref_dx=-1.27, ref_dy=-7.62, val_dx=-1.27, val_dy=7.62)
-for num, name in (("1", "IN1_24V"), ("2", "IN2_24V"), ("3", "GND_24V")):
-    end = (j1[num][0] + 12.7, j1[num][1])
-    wire(j1[num], end); label(name, end, right=True)
+j1 = place("CONN6", "J1", "24V + e-stops", 27.94, 96.52, ref_dx=-2.54, ref_dy=-11.43, val_dx=-2.54, val_dy=11.43)
+f1 = place("FUSE_H", "F1", "T2A", 46.99, j1["1"][1], ref_dx=-1.27, ref_dy=-2.54, val_dx=2.54, val_dy=-2.54)
+wire(j1["1"], f1["1"])                                         # supply in -> fuse
+wire(f1["2"], (f1["2"][0] + 5.08, f1["2"][1])); label("+24V", (f1["2"][0] + 5.08, f1["2"][1]), right=True)
+for i, name in enumerate(J1_NETS[1:], start=2):
+    p = j1[str(i)]
+    end = (p[0] + 10.16, p[1])
+    wire(p, end); label(name, end, right=True)
 a1 = place("UNO_R4_WIFI", "A1", "UNO R4 WiFi or UNO Q", 200.66, 96.52, ref_dy=-26.67, val_dy=26.67)
 UNO_NETS = {UNO_NUM[n]: net for n, net in
             {"IOREF": "IOREF", "GND1": "GND", "GND2": "GND", "D2": "D2", "D3": "D3"}.items()}
@@ -232,9 +244,9 @@ for num, p in a1.items():
     wire(p, end)
     label(UNO_NETS[num], end, right=not left)
 
-text("PC817 24 V input test bench - 2 channels - shield for Arduino UNO R4 WiFi / UNO Q", 25.4, 30.48, 2.54)
-text("If = (24 V - 1.2 V opto - 2.0 V LED) / 4.4 k = 4.7 mA.  Each 2.2 k (1/4 W): 49 mW at 24 V, 75 mW at 28.8 V.", 25.4, 38.1)
-text("1N4148 protects both LEDs against a reversed input (PC817 VR max = 6 V).", 25.4, 41.91)
+text("Two e-stop inputs, 24 V loop through PC817 - shield for Arduino UNO R4 WiFi / UNO Q", 25.4, 30.48, 2.54)
+text("Loop current = (24 V - 1.2 V opto - 2.0 V LED) / 3.0 k = 6.9 mA.  Each 1.5 k (1/4 W): 72 mW at 24 V, 109 mW at 28.8 V.", 25.4, 38.1)
+text("Button pressed, wire cut or 24 V lost -> no current -> pin HIGH = STOP.  F1 protects the 24 V wires going out to the buttons.", 25.4, 41.91)
 text("GND_24V and GND are NOT connected: this is the isolation barrier.", 25.4, 45.72)
 text("Pull-ups go to IOREF: 5 V on the UNO R4 WiFi, 3.3 V on the UNO Q. Never to the 5V pin. Sketch: pinMode(D2/D3, INPUT).", 25.4, 49.53)
 text("ISOLATION", 106.68, 148.59, 1.27)
@@ -243,7 +255,7 @@ items.append("(polyline (pts (xy 119.38 55.88) (xy 119.38 144.78)) (stroke (widt
 sch = """(kicad_sch (version 20230121) (generator eeschema)
   (uuid %s)
   (paper "A4")
-  (title_block (title "PC817 24 V input test bench") (date "2026-10-02") (rev "0.5")
+  (title_block (title "E-stop inputs: 24 V loop through PC817") (date "2026-10-02") (rev "0.6")
     (comment 1 "Generated by generate.py - edit the script, not this file"))
   (lib_symbols
     %s)

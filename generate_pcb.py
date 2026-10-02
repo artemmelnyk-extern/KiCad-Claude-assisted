@@ -94,7 +94,8 @@ def channel_placement(k, y0):
 
 
 HEADER_PITCH_Y = 48.26
-PLACE = {"A1": (0.0, HEADER_PITCH_Y, 0), "J1": (-21.0, 23.5, 270)}
+# J1: 6 screw terminals down the left edge. F1: fuse above it, on the incoming 24 V.
+PLACE = {"A1": (0.0, HEADER_PITCH_Y, 0), "J1": (-21.0, 11.0, 270), "F1": (-21.0, 3.0, 0)}
 PLACE.update(channel_placement(1, 8.0))
 PLACE.update(channel_placement(2, 26.0))
 
@@ -127,6 +128,8 @@ for g in list(FPS["A1"].GraphicalItems()):
 # LED reference texts: moved up, clear of the diode pad below
 for k, y0 in ((1, 8.0), (2, 26.0)):
     FPS["D%d" % k].Reference().SetPosition(mm(14.6, y0 + 2.2))
+FPS["J1"].Reference().SetPosition(mm(-21.0, 41.0))      # below the terminal block
+FPS["F1"].Reference().SetPosition(mm(-11.5, 3.0))       # beside the fuse, inside the board
 missing = set(COMPS) - set(PLACE)
 if missing:
     sys.exit("no placement for: %s" % sorted(missing))
@@ -140,13 +143,13 @@ def pad(ref, num):
 
 
 # --------------------------------------------------------------------------- routing
-def route(layer, netname, *pts):
+def route(layer, netname, *pts, width=TRACK_W):
     for a, b in zip(pts, pts[1:]):
         if a == b:
             continue
         t = pcbnew.PCB_TRACK(board)
         t.SetStart(mm(*a)); t.SetEnd(mm(*b))
-        t.SetWidth(pcbnew.FromMM(TRACK_W)); t.SetLayer(layer); t.SetNet(net(netname))
+        t.SetWidth(pcbnew.FromMM(width)); t.SetLayer(layer); t.SetNet(net(netname))
         board.Add(t)
 
 
@@ -173,7 +176,7 @@ def route_channel(k, y0):
     u4, n_out = pad("U%d" % k, "4")
     rp1, n_ioref = pad("R%d" % (k + 4), "1")
     rp2, _ = pad("R%d" % (k + 4), "2")
-    jin, _ = pad("J1", str(k))
+    jin, _ = pad("J1", str(2 * k + 1))                    # ES1 = terminal 3, ES2 = terminal 5
 
     # 24 V side, component layer
     route(F, n_in, jin, (ra1[0], jin[1]), ra1)
@@ -182,8 +185,7 @@ def route_channel(k, y0):
     route(F, n_k, led_k, u1)
     # 24 V return, solder layer: a rail under the channel, joined by a bus on the left
     rail = y0 + 11.5
-    route(B, n_g24, u2, (u2[0], rail), (GND24_BUS_X, rail))
-    route(B, n_g24, dio_a, (dio_a[0], rail))
+    route(B, n_g24, u2, (u2[0], rail), (dio_a[0], rail), dio_a)
     # logic side
     route(F, n_out, rp2, u4)
     header, _ = pad("A1", "17" if k == 1 else "18")       # D2, D3 on the top row
@@ -194,14 +196,26 @@ def route_channel(k, y0):
     return rail, u3, n_gnd, rp1, n_ioref, n_g24
 
 
-GND24_BUS_X = -14.5
+GND24_BUS_X = 16.0          # between the LED and the optocoupler, solder side
 rail1, gnd1, n_gnd, io1, n_ioref, n_g24 = route_channel(1, 8.0)
 rail2, gnd2, _, io2, _, _ = route_channel(2, 26.0)
 
 # 24 V return bus and its terminal
-j3, _ = pad("J1", "3")
+dio4_a, _ = pad("D4", "2")
+j0v, _ = pad("J1", "6")
 route(B, n_g24, (GND24_BUS_X, rail1), (GND24_BUS_X, rail2))
-route(B, n_g24, j3, (GND24_BUS_X, j3[1]))
+route(B, n_g24, (dio4_a[0], rail2), (j0v[0] + 1.5, rail2), j0v)
+
+# fused 24 V: supply terminal -> fuse -> the two ES+ terminals. 1 mm wide: this is the path
+# a short on a button cable would load until the fuse opens.
+jin24, n_24in = pad("J1", "1")
+f1a, _ = pad("F1", "1")
+f1b, n_24 = pad("F1", "2")
+es1p, _ = pad("J1", "2")
+es2p, _ = pad("J1", "4")
+route(F, n_24in, jin24, f1a, width=1.0)
+route(B, n_24, f1b, (f1b[0], es1p[1]), es1p, width=1.0)
+route(B, n_24, (f1b[0], es1p[1]), (f1b[0], es2p[1]), es2p, width=1.0)
 
 # IOREF: both pull-ups, then along the bottom to the header pin, solder side
 ioref_pin, _ = pad("A1", "2")
@@ -240,12 +254,13 @@ BARRIER_X = 21.8
 for y in range(5, 39, 2):
     if not any(y0 + 3 <= y <= y0 + 9.5 for y0 in (8.0, 26.0)):     # skip the optocoupler bodies
         line(pcbnew.F_SilkS, (BARRIER_X, y), (BARRIER_X, y + 1), 0.15)
-silk("24V SIDE", 3.0, 40.0)
+silk("24V SIDE", 3.0, 41.0)
 silk("LOGIC", 29.5, 22.5)
-silk("PC817 24V INPUTS", -17.5, 3.0, 1.2)
+silk("E-STOP INPUTS", 0.0, 3.0, 1.2)
 silk("UNO R4 WiFi / UNO Q", -16.0, 46.0)
-silk("IN1", -24.5, 19.0)
-silk("0V", -24.5, 37.5)
+# terminal names, printed inside the board next to each screw (right of the block)
+for i, name in enumerate(("24V", "ES1+", "ES1", "ES2+", "ES2", "0V")):
+    silk(name, -13.3, 9.6 + 5.0 * i, 0.8)
 
 OUT.parent.mkdir(exist_ok=True)
 pcbnew.SaveBoard(str(OUT), board)
