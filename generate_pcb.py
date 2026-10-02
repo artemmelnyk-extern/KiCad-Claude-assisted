@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
-"""Generate kicad/pc817_bench.kicad_pcb: an Arduino UNO shield, two layers, through-hole.
+"""PROTO-SHIELD VARIANT. Generate kicad/pc817_bench.kicad_pcb as a model of the hand-built board.
 
-Must run with KiCad's own Python (it needs the pcbnew module), after generate.py and after
-the netlist has been exported -- check.sh does all of it in order:
-    python3 generate.py
-    kicad-cli sch export netlist -o kicad/pc817_bench.net kicad/pc817_bench.kicad_sch
-    python3 generate_pcb.py              (KiCad's python)
+Nothing here is meant to be manufactured: the board is a proto shield whose holes already
+exist. The KiCad file is a model of the build plan in generate_protoboard.py, so that KiCad
+can check it:
 
-Coordinates below are in millimetres, x to the right, y down, seen from the component side
-of the shield with the Arduino's USB connector on the left. The digital header is then the
-top row (y = 0) and the power/analog header the bottom row (y = 48.26); x = 0 is the first
-pin of the power header.
+  * every part sits on the 2.54 mm grid, with the footprint of how it is mounted
+    (resistors and diodes upright);
+  * solder bridges and bare-wire runs are tracks on the solder side (B.Cu);
+  * insulated wires are NOT copper: they are drawn on the Cmts.User layer and stay as
+    ratsnest lines. KiCad therefore reports exactly one "unconnected" item per wire.
 
-The library footprint Module:Arduino_UNO_R3 is drawn for an Arduino lying on the SAME side
-as the parts. A shield sits ABOVE the Arduino, so the footprint is flipped to the back side;
-unflipped, the shield would come out mirrored and would only fit upside down.
+Must run with KiCad's own Python (module pcbnew), after generate.py and the netlist export.
+
+Coordinates: x right, y down, component side, USB on the left. The digital header is the
+row y = 0, the power header the row y = 48.26, and x = 0 is the first pin of the power
+header. Where the grid sits on a real proto shield is an ASSUMPTION (GRID_X0, GRID_Y0):
+measure the board.
 """
 import os
 import re
@@ -24,12 +26,14 @@ from pathlib import Path
 import pcbnew
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "kicad" / "pc817_bench.kicad_pcb"
-NETLIST = HERE / "kicad" / "pc817_bench.net"
-ORIGIN = (120.0, 80.0)          # where Arduino pin 1 sits on the sheet
+sys.path.insert(0, str(HERE))
+import generate_protoboard as plan      # the build plan: holes, bridges, bare wires, wires
 
+OUT = HERE / "kicad" / "pc817_bench.kicad_pcb"
+ORIGIN = (120.0, 80.0)
+P = 2.54
+GRID_X0, GRID_Y0 = -22.86, 5.08         # position of hole (row 0, col 0)
 F, B = pcbnew.F_Cu, pcbnew.B_Cu
-TRACK_W = 0.5
 
 
 def find_footprint_dir():
@@ -49,9 +53,12 @@ def mm(x, y):
     return pcbnew.VECTOR2I(pcbnew.FromMM(ORIGIN[0] + x), pcbnew.FromMM(ORIGIN[1] + y))
 
 
+def hole_xy(h):
+    return GRID_X0 + h[1] * P, GRID_Y0 + h[0] * P
+
+
 # --------------------------------------------------------------------------- netlist
 def read_netlist(path):
-    """Returns ({ref: (footprint, value, symbol uuid)}, {(ref, pad): net name})."""
     text = path.read_text()
     comps, nets = {}, {}
     for blk in re.split(r"\(comp\s", text)[1:]:
@@ -66,7 +73,7 @@ def read_netlist(path):
     return comps, nets
 
 
-COMPS, PAD_NET = read_netlist(NETLIST)
+COMPS, PAD_NET = read_netlist(plan.NETLIST)
 board = pcbnew.BOARD()
 NETS = {}
 
@@ -79,39 +86,16 @@ def net(name):
 
 
 # --------------------------------------------------------------------------- placement
-# Four identical channels stacked top to bottom. ROWS gives, per row: the schematic channel
-# number and the y of its resistor line. The order is set by the header: each row's output
-# has its own way up to the digital header without crossing the others (see route_logic).
-ROW_PITCH = 10.0
-ROWS = [(3, 4.5), (2, 14.5), (1, 24.5), (4, 34.5)]      # lidar 1, e-stop 2, e-stop 1, lidar 2
-ARDUINO_PAD = {1: "17", 2: "18", 3: "19", 4: "20"}      # channel -> pad of D2, D3, D4, D5
-TERMINAL = {3: "3", 2: "5", 1: "7", 4: "8"}             # channel -> J1 terminal of its input
-RAIL_DY = 8.3                                           # 24 V return rail under each channel
-BUS_X = 15.3                                            # 24 V return bus, between LED and optocoupler
-LOGIC_GND_X = 32.9
-J1_X, J1_Y, FUSE_Y = -22.0, 10.3, 3.0
-
-
-def refs(ch):
-    return {"ra": "R%d" % (2 * ch - 1), "rb": "R%d" % (2 * ch), "led": "D%d" % ch,
-            "dio": "D%d" % (ch + 4), "u": "U%d" % ch, "rp": "R%d" % (ch + 8)}
-
-
-# ref: (x, y, rotation) of the footprint origin (= pad 1 for these footprints)
-PLACE = {"A1": (0.0, 48.26, 0), "J1": (J1_X, J1_Y, 270), "F1": (-20.5, FUSE_Y, 180)}
-for ch, y0 in ROWS:
-    r = refs(ch)
-    PLACE.update({
-        r["ra"]:  (-12.0, y0, 0),            # series resistor 1: input -> M
-        r["rb"]:  (0.3, y0, 0),              # series resistor 2: M -> N
-        r["led"]: (13.0, y0 + 4.0, 180),     # indicator LED, anode on the left, under the end of rb
-        r["dio"]: (7.4, y0 + 4.0, 180),      # 1N4148, cathode on the right, next to the LED anode
-        r["u"]:   (17.5, y0 + 4.0, 0),       # PC817: pins 1-2 on the 24 V side
-        r["rp"]:  (35.28, y0, 180),          # pull-up, pad 2 right above the collector
-    })
+# where each pad must land: {ref: {pad number: hole}}, straight from the plan
+TARGET = {}
+for h, (ref, num) in plan.legs.items():
+    TARGET.setdefault(ref, {})[num] = h
+TARGET["J1"] = {str(i + 1): (plan.TERM_ROW[i], 0) for i in range(len(plan.TERMINALS))}
 
 FPS = {}
-for ref, (x, y, rot) in PLACE.items():
+
+
+def load(ref):
     lib, name = COMPS[ref][0].split(":")
     fp = pcbnew.FootprintLoad(os.path.join(FP_DIR, lib + ".pretty"), name)
     if fp is None:
@@ -120,177 +104,120 @@ for ref, (x, y, rot) in PLACE.items():
     fp.SetValue(COMPS[ref][1])
     fp.SetFPID(pcbnew.LIB_ID(lib, name))
     fp.SetPath(pcbnew.KIID_PATH("/" + COMPS[ref][2]))
-    fp.SetPosition(mm(x, y))
-    fp.SetOrientationDegrees(rot)
-    for pad_ in fp.Pads():
-        name_ = PAD_NET.get((ref, pad_.GetNumber()))
-        if name_:
-            pad_.SetNet(net(name_))
+    for p in fp.Pads():
+        n = PAD_NET.get((ref, p.GetNumber()))
+        if n:
+            p.SetNet(net(n))
     board.Add(fp)
     FPS[ref] = fp
-missing = set(COMPS) - set(PLACE)
-if missing:
-    sys.exit("no placement for: %s" % sorted(missing))
+    return fp
 
-# The library footprint describes an Arduino mounted ON a board: its courtyard and outline
-# cover the whole area. On a shield the parts sit inside that area, so both are removed, and
-# the footprint is flipped to the back because the Arduino is under the shield.
-# (Done after every footprint is loaded: touching a footprint earlier breaks
-# pcbnew.FootprintLoad in KiCad 10.)
-FPS["A1"].Flip(mm(*PLACE["A1"][:2]), pcbnew.FLIP_DIRECTION_TOP_BOTTOM)
+
+for ref in COMPS:           # load everything first (KiCad 10: modifying a footprint breaks later loads)
+    load(ref)
+
+
+def pad_mm(p):
+    pos = p.GetPosition()
+    return pcbnew.ToMM(pos.x) - ORIGIN[0], pcbnew.ToMM(pos.y) - ORIGIN[1]
+
+
+def place_on_grid(ref):
+    """Try the four rotations until every pad lands in its hole of the plan."""
+    fp, want = FPS[ref], TARGET[ref]
+    for rot in (0, 90, 180, 270):
+        fp.SetOrientationDegrees(rot)
+        p1 = next(p for p in fp.Pads() if p.GetNumber() == "1")
+        x1, y1 = pad_mm(p1)
+        tx, ty = hole_xy(want["1"])
+        cur = fp.GetPosition()
+        fp.SetPosition(pcbnew.VECTOR2I(cur.x + pcbnew.FromMM(tx - x1), cur.y + pcbnew.FromMM(ty - y1)))
+        if all(max(abs(a - b) for a, b in zip(pad_mm(p), hole_xy(want[p.GetNumber()]))) < 0.01 for p in fp.Pads()):
+            return rot
+    sys.exit("%s (%s) does not fit its holes %s in any rotation" % (ref, COMPS[ref][0], want))
+
+
+missing = set(COMPS) - set(TARGET) - {"A1"}
+if missing:
+    sys.exit("parts not in the build plan: %s" % sorted(missing))
+for ref in TARGET:
+    place_on_grid(ref)
+
+# Arduino header: under the shield, so flipped to the back; its courtyard and outline cover
+# the whole board and are removed (see the main branch for the reasoning).
+FPS["A1"].SetPosition(mm(0.0, 48.26))
+FPS["A1"].Flip(mm(0.0, 48.26), pcbnew.FLIP_DIRECTION_TOP_BOTTOM)
 for g in list(FPS["A1"].GraphicalItems()):
     if g.GetLayer() in (pcbnew.F_CrtYd, pcbnew.F_SilkS, pcbnew.B_CrtYd, pcbnew.B_SilkS):
         FPS["A1"].Remove(g)
 
 
-def ref_text(ref, x, y, size=0.8):
-    t = FPS[ref].Reference()
-    t.SetPosition(mm(x, y))
-    t.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(size), pcbnew.FromMM(size)))
-    t.SetTextThickness(pcbnew.FromMM(0.12))
-    t.SetTextAngleDegrees(0)
+# --------------------------------------------------------------------------- solder side
+def track(a, b, width):
+    name = plan.HOLE_NET.get(a) or plan.HOLE_NET.get(b)
+    if name is None:
+        sys.exit("no net for the run %s -> %s" % (a, b))
+    t = pcbnew.PCB_TRACK(board)
+    t.SetStart(mm(*hole_xy(a))); t.SetEnd(mm(*hole_xy(b)))
+    t.SetWidth(pcbnew.FromMM(width)); t.SetLayer(B); t.SetNet(net(name))
+    board.Add(t)
 
 
-# reference texts: on the part's own outline (hidden once assembled) where rows are too close
-for ch, y0 in ROWS:
-    r = refs(ch)
-    ref_text(r["ra"], -6.92, y0)
-    ref_text(r["rb"], 5.38, y0)
-    ref_text(r["rp"], 30.2, y0)
-    ref_text(r["dio"], 3.6, y0 + 6.0)
-    ref_text(r["led"], 13.6, y0 + 1.4)
-    ref_text(r["u"], 21.3, y0 + 5.27)
-ref_text("F1", -15.0, 1.0)
-ref_text("J1", -22.0, 43.5)
+for a, b in plan.bridges:
+    track(a, b, 1.2)                    # solder bridge
+for run in plan.buses:
+    for a, b in zip(run, run[1:]):
+        track(a, b, 0.9)                # bare wire
 
 
-def pad(ref, num):
-    """Pad centre in local millimetres, and its net name."""
-    p = next(p for p in FPS[ref].Pads() if p.GetNumber() == num)
-    pos = p.GetPosition()
-    return (round(pcbnew.ToMM(pos.x) - ORIGIN[0], 3), round(pcbnew.ToMM(pos.y) - ORIGIN[1], 3)), p.GetNetname()
-
-
-# --------------------------------------------------------------------------- routing
-def route(layer, netname, *pts, width=TRACK_W):
-    for a, b in zip(pts, pts[1:]):
-        if a == b:
-            continue
-        t = pcbnew.PCB_TRACK(board)
-        t.SetStart(mm(*a)); t.SetEnd(mm(*b))
-        t.SetWidth(pcbnew.FromMM(width)); t.SetLayer(layer); t.SetNet(net(netname))
-        board.Add(t)
-
-
-LANES = [-18.8, -17.1, -15.4, -14.0]       # where each input track turns towards its row
-
-
-def route_channel(row, ch, y0):
-    r = refs(ch)
-    ra1, n_in = pad(r["ra"], "1")
-    ra2, n_m = pad(r["ra"], "2")
-    rb1, _ = pad(r["rb"], "1")
-    rb2, n_n = pad(r["rb"], "2")
-    led_a, _ = pad(r["led"], "2")
-    led_k, n_k = pad(r["led"], "1")
-    dio_k, _ = pad(r["dio"], "1")
-    dio_a, n_g24 = pad(r["dio"], "2")
-    u1, _ = pad(r["u"], "1")
-    u2, _ = pad(r["u"], "2")
-    u3, n_gnd = pad(r["u"], "3")
-    u4, n_out = pad(r["u"], "4")
-    rp1, n_ioref = pad(r["rp"], "1")
-    rp2, _ = pad(r["rp"], "2")
-    jin, _ = pad("J1", TERMINAL[ch])
-
-    # 24 V side, component layer
-    route(F, n_in, jin, (LANES[row], jin[1]), (LANES[row], ra1[1]), ra1)
-    route(F, n_m, ra2, rb1)
-    route(F, n_n, rb2, led_a, dio_k)
-    route(F, n_k, led_k, u1)
-    # 24 V return, solder layer: a rail under the channel
-    rail = y0 + RAIL_DY
-    route(B, n_g24, u2, (u2[0], rail), (dio_a[0], rail), dio_a)
-
-    # logic side: collector to its pull-up, then to its header pin
-    route(F, n_out, rp2, u4)
-    header, _ = pad("A1", ARDUINO_PAD[ch])
-    if row == 0:                    # top row: straight up from the pull-up pad
-        route(F, n_out, rp2, header)
-    elif row == 3:                  # bottom row: up through the gap under the optocouplers
-        route(B, n_out, u4, (header[0], u4[1]), header)
-    else:                           # middle rows: one lane each, right of the optocouplers
-        route(B, n_out, u4, (header[0], u4[1]), header)
-    route(F, n_gnd, u3, (LOGIC_GND_X, u3[1]))
-    return rail, n_g24, n_gnd, n_ioref, u3, rp1
-
-
-res = [route_channel(i, ch, y0) for i, (ch, y0) in enumerate(ROWS)]
-rails = [x[0] for x in res]
-n_g24, n_gnd, n_ioref = res[0][1], res[0][2], res[0][3]
-
-# 24 V return: bus joining the four rails, and the two 0V terminals
-route(B, n_g24, (BUS_X, rails[0]), (BUS_X, rails[-1]))
-dio_x = pad(refs(ROWS[0][0])["dio"], "2")[0][0]
-t0v_top, _ = pad("J1", "2")
-t0v_bot, _ = pad("J1", "9")
-route(B, n_g24, t0v_top, (t0v_top[0] + 1.0, rails[0]), (dio_x, rails[0]))
-route(B, n_g24, t0v_bot, (t0v_bot[0] + 4.5, rails[-1]), (dio_x, rails[-1]))
-
-# fused 24 V: supply terminal -> fuse -> the two ES+ terminals. 1 mm wide: this is the path
-# a short on a button cable would load until the fuse opens. The bus runs left of the terminals.
-t24, n_24in = pad("J1", "1")
-f1a, _ = pad("F1", "1")
-f1b, n_24 = pad("F1", "2")
-route(F, n_24in, t24, (f1a[0], t24[1] - 1.5), f1a, width=1.0)
-for term in ("4", "6"):
-    tp, _ = pad("J1", term)
-    route(B, n_24, f1b, (f1b[0], tp[1]), tp, width=1.0)
-
-# IOREF: the four pull-ups in a column, then along the bottom to the header pin, solder side
-BOTTOM_Y = 46.2
-ioref_pin, _ = pad("A1", "2")
-route(B, n_ioref, res[0][5], res[-1][5], (res[-1][5][0], BOTTOM_Y), (ioref_pin[0], BOTTOM_Y), ioref_pin)
-
-# logic GND: a column joining the four emitters, then along the bottom to the two GND pins
-g6, _ = pad("A1", "6")
-g7, _ = pad("A1", "7")
-route(F, n_gnd, (LOGIC_GND_X, res[0][4][1]), (LOGIC_GND_X, BOTTOM_Y), (g7[0], BOTTOM_Y), g7, g6)
-
-
-# --------------------------------------------------------------------------- outline, silk
-def line(layer, a, b, width=0.1):
+# --------------------------------------------------------------------------- drawings
+def shape(layer, kind, a, b, width):
     s = pcbnew.PCB_SHAPE(board)
-    s.SetShape(pcbnew.SHAPE_T_SEGMENT)
-    s.SetStart(mm(*a)); s.SetEnd(mm(*b)); s.SetLayer(layer); s.SetWidth(pcbnew.FromMM(width))
+    s.SetShape(kind)
+    if kind == pcbnew.SHAPE_T_CIRCLE:
+        s.SetCenter(mm(*a)); s.SetEnd(mm(a[0] + b, a[1]))
+    else:
+        s.SetStart(mm(*a)); s.SetEnd(mm(*b))
+    s.SetLayer(layer); s.SetWidth(pcbnew.FromMM(width))
     board.Add(s)
 
 
-def silk(text, x, y, size=1.0):
+def text(layer, s, x, y, size=1.0):
     t = pcbnew.PCB_TEXT(board)
-    t.SetText(text); t.SetPosition(mm(x, y)); t.SetLayer(pcbnew.F_SilkS)
+    t.SetText(s); t.SetPosition(mm(x, y)); t.SetLayer(layer)
     t.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(size), pcbnew.FromMM(size)))
     t.SetTextThickness(pcbnew.FromMM(0.15))
     board.Add(t)
 
 
-# board edge: the UNO rectangle (the Arduino's own outline, without its right-hand bulge)
-X0, Y0, X1, Y1 = -27.94, -2.54, 38.1, 50.8
+X0, Y0, X1, Y1 = -27.94, -2.54, 38.1, 50.8                 # UNO shield rectangle
 for a, b in (((X0, Y0), (X1, Y0)), ((X1, Y0), (X1, Y1)), ((X1, Y1), (X0, Y1)), ((X0, Y1), (X0, Y0))):
-    line(pcbnew.Edge_Cuts, a, b)
+    shape(pcbnew.Edge_Cuts, pcbnew.SHAPE_T_SEGMENT, a, b, 0.1)
 
-# isolation barrier, drawn between the two pin rows of the optocouplers, outside their bodies
-BARRIER_X = 20.4
-for y in range(3, 45):
-    if not any(y0 + 2.4 <= y <= y0 + 8.2 for _, y0 in ROWS):
-        line(pcbnew.F_SilkS, (BARRIER_X, y), (BARRIER_X, y + 0.6), 0.15)
+# the grid of the plan, for reference (Dwgs.User): one circle per hole, numbered rows and columns
+for r in range(plan.ROWS):
+    text(pcbnew.Dwgs_User, str(r), GRID_X0 + plan.COLS * P + 1.0, GRID_Y0 + r * P, 0.8)
+    for c in range(plan.COLS):
+        shape(pcbnew.Dwgs_User, pcbnew.SHAPE_T_CIRCLE, hole_xy((r, c)), 0.5, 0.05)
+for c in range(plan.COLS):
+    text(pcbnew.Dwgs_User, str(c), GRID_X0 + c * P, GRID_Y0 + plan.ROWS * P, 0.8)
 
-# terminal names, right of the block
-for i, name in enumerate(("24V", "0V", "L1", "ES2+", "ES2", "ES1+", "ES1", "L2", "0V")):
-    silk(name, -15.9 if i not in (2, 4) else -15.2, J1_Y + 3.5 * i - (1.2 if i in (2, 4, 6, 7) else 0), 0.8)
-silk("SAFETY INPUTS", -14.0, 44.2, 1.0)
-silk("UNO R4 WiFi / UNO Q", -14.0, 46.3, 0.8)
+# insulated wires (Cmts.User): from a hole to a hole, or to a header pin
+HEADER_PAD = {"D2": "17", "D3": "18", "D4": "19", "D5": "20", "IOREF": "2", "GND": "7"}
+for a, b, _, why in plan.wires:
+    if isinstance(b, str):
+        end = pad_mm(next(p for p in FPS["A1"].Pads() if p.GetNumber() == HEADER_PAD[b]))
+    else:
+        end = hole_xy(b)
+    shape(pcbnew.Cmts_User, pcbnew.SHAPE_T_SEGMENT, hole_xy(a), end, 0.3)
+text(pcbnew.Cmts_User, "Cmts.User lines = insulated wires", 22.0, 44.0, 0.8)
+
+for ref, fp in FPS.items():            # keep the reference texts small: the grid is dense
+    t = fp.Reference()
+    t.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.8), pcbnew.FromMM(0.8)))
+    t.SetTextThickness(pcbnew.FromMM(0.12))
 
 OUT.parent.mkdir(exist_ok=True)
 pcbnew.SaveBoard(str(OUT), board)
-print("written: %s (%d footprints, %d tracks)" % (OUT.name, len(FPS), len(board.GetTracks())))
+print("written: %s (%d footprints on the grid, %d solder-side runs, %d wires as ratsnest)"
+      % (OUT.name, len(FPS), len(board.GetTracks()), len(plan.wires)))

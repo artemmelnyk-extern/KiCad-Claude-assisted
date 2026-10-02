@@ -146,10 +146,30 @@ the tracks segment by segment. There is no autorouter.
 PC817: 4-pin DIP, pin 1 anode, 2 cathode, 3 emitter, 4 collector; current transfer ratio 50–600 % at
 5 mA; isolation 5000 Vrms. Datasheets are available from Sharp and from second-source manufacturers.
 
-## Hand-built version
+## This branch: the proto-shield build
 
-The branch `proto-shield` adds a build plan for the same circuit on a proto shield with isolated
-pads: a hole-by-hole layout, solder bridges and wires, checked against this schematic's netlist.
+**On this branch the KiCad files describe a hand-built board, not a board to manufacture.** The circuit
+is the one on `main`; three things differ so that it fits a proto shield with isolated pads on a
+2.54 mm grid:
+
+- resistors and the 1N4148 are mounted upright (2.54 mm footprints);
+- the terminal block is 8-way at 5.08 mm, with one `ES+` screw shared by both buttons;
+- `kicad/pc817_bench.kicad_pcb` is a **model of the build**: parts on the grid, solder bridges and
+  bare-wire runs as tracks on the solder side, insulated wires as lines on the `Cmts.User` layer.
+
+| File | Content |
+|---|---|
+| [protoboard/BUILD.md](protoboard/BUILD.md) | parts with their holes, bridges, bare-wire runs, wires |
+| `protoboard/layout.png`, `layout.pdf` | the plan as a drawing; the PDF prints at 1:1 |
+| `generate_protoboard.py` | the plan itself; checks that the joined holes form the schematic's nets |
+| `generate_pcb.py` | builds the KiCad model from the plan |
+
+In KiCad's board editor the insulated wires appear as ratsnest lines, and the design-rule check
+reports one "unconnected" item per wire plus one for the two GND header pins. That is expected;
+`check.sh` verifies the count and that the model matches the schematic.
+
+The plan needs **16 rows × 16 columns** of isolated pads. Where that grid sits relative to the
+headers is assumed in `generate_pcb.py` (`GRID_X0`, `GRID_Y0`); measure the real board.
 
 ## Licence
 

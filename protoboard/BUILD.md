@@ -5,7 +5,7 @@ it joins form the same 25 nets as the KiCad netlist.
 
 ![Layout](layout.png)
 
-- Needs a grid of **15 rows × 16 columns of isolated pads** (38 × 41 mm).
+- Needs a grid of **16 rows × 16 columns of isolated pads** (41 × 41 mm).
 - Rows and columns are counted from 0, top-left, seen from the **component side**.
 - `layout.pdf` prints at 1:1 at 100 % scale.
 - Columns 11 and 12 stay empty: they are the isolation gap under the optocouplers.
@@ -14,31 +14,31 @@ it joins form the same 25 nets as the KiCad netlist.
 
 | Part | Value | Holes | Note |
 |---|---|---|---|
-| R1 | 1.5k | row 2, col 4; row 2, col 5 | stands upright |
-| R2 | 1.5k | row 2, col 6; row 2, col 7 | stands upright |
-| D1 | LED | row 2, col 8; row 2, col 9 | first hole = anode (long leg) |
-| D5 | 1N4148 | row 3, col 8; row 3, col 9 | stands upright; first hole = cathode (band) |
-| U1 | PC817 | row 2, col 10; row 3, col 10; row 3, col 13; row 2, col 13 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
-| R9 | 10k | row 2, col 14; row 2, col 15 | stands upright |
-| R3 | 1.5k | row 5, col 4; row 5, col 5 | stands upright |
-| R4 | 1.5k | row 5, col 6; row 5, col 7 | stands upright |
-| D2 | LED | row 5, col 8; row 5, col 9 | first hole = anode (long leg) |
-| D6 | 1N4148 | row 6, col 8; row 6, col 9 | stands upright; first hole = cathode (band) |
-| U2 | PC817 | row 5, col 10; row 6, col 10; row 6, col 13; row 5, col 13 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
-| R10 | 10k | row 5, col 14; row 5, col 15 | stands upright |
-| R5 | 2.2k | row 8, col 4; row 8, col 5 | stands upright |
-| R6 | 2.2k | row 8, col 6; row 8, col 7 | stands upright |
-| D3 | LED | row 8, col 8; row 8, col 9 | first hole = anode (long leg) |
-| D7 | 1N4148 | row 9, col 8; row 9, col 9 | stands upright; first hole = cathode (band) |
-| U3 | PC817 | row 8, col 10; row 9, col 10; row 9, col 13; row 8, col 13 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
-| R11 | 10k | row 8, col 14; row 8, col 15 | stands upright |
-| R7 | 2.2k | row 11, col 4; row 11, col 5 | stands upright |
-| R8 | 2.2k | row 11, col 6; row 11, col 7 | stands upright |
-| D4 | LED | row 11, col 8; row 11, col 9 | first hole = anode (long leg) |
-| D8 | 1N4148 | row 12, col 8; row 12, col 9 | stands upright; first hole = cathode (band) |
-| U4 | PC817 | row 11, col 10; row 12, col 10; row 12, col 13; row 11, col 13 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
-| R12 | 10k | row 11, col 14; row 11, col 15 | stands upright |
-| F1 | T2A | row 0, col 3; row 0, col 5 |  |
+| R1 | 1.5k | row 3, col 4; row 3, col 5 | stands upright |
+| R2 | 1.5k | row 3, col 6; row 3, col 7 | stands upright |
+| D1 | LED | row 3, col 8; row 3, col 9 | first hole = anode (long leg) |
+| D5 | 1N4148 | row 4, col 8; row 4, col 7 | stands upright; first hole = cathode (band) |
+| U1 | PC817 | row 3, col 10; row 4, col 10; row 4, col 13; row 3, col 13 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
+| R9 | 10k | row 3, col 14; row 3, col 15 | stands upright |
+| R3 | 1.5k | row 6, col 4; row 6, col 5 | stands upright |
+| R4 | 1.5k | row 6, col 6; row 6, col 7 | stands upright |
+| D2 | LED | row 6, col 8; row 6, col 9 | first hole = anode (long leg) |
+| D6 | 1N4148 | row 7, col 8; row 7, col 7 | stands upright; first hole = cathode (band) |
+| U2 | PC817 | row 6, col 10; row 7, col 10; row 7, col 13; row 6, col 13 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
+| R10 | 10k | row 6, col 14; row 6, col 15 | stands upright |
+| R5 | 2.2k | row 9, col 4; row 9, col 5 | stands upright |
+| R6 | 2.2k | row 9, col 6; row 9, col 7 | stands upright |
+| D3 | LED | row 9, col 8; row 9, col 9 | first hole = anode (long leg) |
+| D7 | 1N4148 | row 10, col 8; row 10, col 7 | stands upright; first hole = cathode (band) |
+| U3 | PC817 | row 9, col 10; row 10, col 10; row 10, col 13; row 9, col 13 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
+| R11 | 10k | row 9, col 14; row 9, col 15 | stands upright |
+| R7 | 2.2k | row 12, col 4; row 12, col 5 | stands upright |
+| R8 | 2.2k | row 12, col 6; row 12, col 7 | stands upright |
+| D4 | LED | row 12, col 8; row 12, col 9 | first hole = anode (long leg) |
+| D8 | 1N4148 | row 13, col 8; row 13, col 7 | stands upright; first hole = cathode (band) |
+| U4 | PC817 | row 12, col 10; row 13, col 10; row 13, col 13; row 12, col 13 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
+| R12 | 10k | row 12, col 14; row 12, col 15 | stands upright |
+| F1 | T2A | row 1, col 4; row 1, col 6 |  |
 
 Screw terminals, 5.08 mm pitch, in column 0:
 
@@ -57,43 +57,43 @@ Screw terminals, 5.08 mm pitch, in column 0:
 
 | From | To |
 |---|---|
-| row 2, col 3 | row 2, col 4 |
-| row 2, col 5 | row 2, col 6 |
-| row 2, col 7 | row 2, col 8 |
-| row 2, col 8 | row 3, col 8 |
-| row 2, col 9 | row 2, col 10 |
+| row 3, col 3 | row 3, col 4 |
+| row 3, col 5 | row 3, col 6 |
+| row 3, col 7 | row 3, col 8 |
+| row 3, col 8 | row 4, col 8 |
 | row 3, col 9 | row 3, col 10 |
-| row 2, col 13 | row 2, col 14 |
-| row 1, col 14 | row 2, col 14 |
+| row 4, col 7 | row 5, col 7 |
 | row 3, col 13 | row 3, col 14 |
-| row 5, col 3 | row 5, col 4 |
-| row 5, col 5 | row 5, col 6 |
-| row 5, col 7 | row 5, col 8 |
-| row 5, col 8 | row 6, col 8 |
-| row 5, col 9 | row 5, col 10 |
+| row 2, col 14 | row 3, col 14 |
+| row 4, col 13 | row 4, col 14 |
+| row 6, col 3 | row 6, col 4 |
+| row 6, col 5 | row 6, col 6 |
+| row 6, col 7 | row 6, col 8 |
+| row 6, col 8 | row 7, col 8 |
 | row 6, col 9 | row 6, col 10 |
-| row 5, col 13 | row 5, col 14 |
-| row 4, col 14 | row 5, col 14 |
+| row 7, col 7 | row 8, col 7 |
 | row 6, col 13 | row 6, col 14 |
-| row 8, col 3 | row 8, col 4 |
-| row 8, col 5 | row 8, col 6 |
-| row 8, col 7 | row 8, col 8 |
-| row 8, col 8 | row 9, col 8 |
-| row 8, col 9 | row 8, col 10 |
+| row 5, col 14 | row 6, col 14 |
+| row 7, col 13 | row 7, col 14 |
+| row 9, col 3 | row 9, col 4 |
+| row 9, col 5 | row 9, col 6 |
+| row 9, col 7 | row 9, col 8 |
+| row 9, col 8 | row 10, col 8 |
 | row 9, col 9 | row 9, col 10 |
-| row 8, col 13 | row 8, col 14 |
-| row 7, col 14 | row 8, col 14 |
+| row 10, col 7 | row 11, col 7 |
 | row 9, col 13 | row 9, col 14 |
-| row 11, col 3 | row 11, col 4 |
-| row 11, col 5 | row 11, col 6 |
-| row 11, col 7 | row 11, col 8 |
-| row 11, col 8 | row 12, col 8 |
-| row 11, col 9 | row 11, col 10 |
+| row 8, col 14 | row 9, col 14 |
+| row 10, col 13 | row 10, col 14 |
+| row 12, col 3 | row 12, col 4 |
+| row 12, col 5 | row 12, col 6 |
+| row 12, col 7 | row 12, col 8 |
+| row 12, col 8 | row 13, col 8 |
 | row 12, col 9 | row 12, col 10 |
-| row 11, col 13 | row 11, col 14 |
-| row 10, col 14 | row 11, col 14 |
+| row 13, col 7 | row 14, col 7 |
 | row 12, col 13 | row 12, col 14 |
-| row 0, col 5 | row 0, col 6 |
+| row 11, col 14 | row 12, col 14 |
+| row 13, col 13 | row 13, col 14 |
+| row 1, col 6 | row 1, col 7 |
 | row 2, col 1 | row 2, col 0 |
 | row 4, col 0 | row 4, col 1 |
 | row 6, col 0 | row 6, col 1 |
@@ -104,34 +104,34 @@ Screw terminals, 5.08 mm pitch, in column 0:
 
 | From | Through | To |
 |---|---|---|
-| row 3, col 9 | row 4, col 9 | row 4, col 2 |
-| row 6, col 9 | row 7, col 9 | row 7, col 2 |
-| row 9, col 9 | row 10, col 9 | row 10, col 2 |
-| row 12, col 9 | row 13, col 9 | row 13, col 2 |
-| row 0, col 0 | straight | row 0, col 3 |
-| row 4, col 2 | straight | row 14, col 2 |
+| row 4, col 10 | row 5, col 10 | row 5, col 2 |
+| row 7, col 10 | row 8, col 10 | row 8, col 2 |
+| row 10, col 10 | row 11, col 10 | row 11, col 2 |
+| row 13, col 10 | row 14, col 10 | row 14, col 2 |
+| row 0, col 0 | row 0, col 4 | row 1, col 4 |
+| row 5, col 2 | straight | row 15, col 2 |
 | row 12, col 0 | straight | row 12, col 2 |
 | row 14, col 0 | straight | row 14, col 2 |
-| row 2, col 15 | straight | row 12, col 15 |
+| row 3, col 15 | straight | row 13, col 15 |
 
 ## 4. Component side: insulated wires
 
 | From | To | Purpose |
 |---|---|---|
-| row 1, col 14 | header pin **D2** | output |
-| row 4, col 14 | header pin **D3** | output |
-| row 7, col 14 | header pin **D4** | output |
-| row 10, col 14 | header pin **D5** | output |
-| row 0, col 6 | row 2, col 1 | fused 24 V to the ES+ terminal |
-| row 4, col 1 | row 2, col 3 | input |
-| row 6, col 1 | row 5, col 3 | input |
-| row 8, col 1 | row 8, col 3 | input |
-| row 10, col 1 | row 11, col 3 | input |
-| row 12, col 15 | header pin **IOREF** | logic supply reference |
-| row 3, col 14 | row 6, col 14 | logic GND |
-| row 6, col 14 | row 9, col 14 | logic GND |
-| row 9, col 14 | row 12, col 14 | logic GND |
-| row 12, col 14 | header pin **GND** | logic GND |
+| row 2, col 14 | header pin **D2** | output |
+| row 5, col 14 | header pin **D3** | output |
+| row 8, col 14 | header pin **D4** | output |
+| row 11, col 14 | header pin **D5** | output |
+| row 1, col 7 | row 2, col 1 | fused 24 V to the ES+ terminal |
+| row 4, col 1 | row 3, col 3 | input |
+| row 6, col 1 | row 6, col 3 | input |
+| row 8, col 1 | row 9, col 3 | input |
+| row 10, col 1 | row 12, col 3 | input |
+| row 13, col 15 | header pin **IOREF** | logic supply reference |
+| row 4, col 14 | row 7, col 14 | logic GND |
+| row 7, col 14 | row 10, col 14 | logic GND |
+| row 10, col 14 | row 13, col 14 | logic GND |
+| row 13, col 14 | header pin **GND** | logic GND |
 
 ## 5. Before applying 24 V
 
