@@ -62,7 +62,7 @@ PINS = {
     "LED_H": {"2": (-3.81, 0), "1": (3.81, 0)},          # 2 = anode (left), 1 = cathode (right)
     "D_V": {"1": (0, 3.81), "2": (0, -3.81)},            # 1 = cathode (top), 2 = anode (bottom)
     "PC817": {"1": (-7.62, 2.54), "2": (-7.62, -2.54), "4": (7.62, 2.54), "3": (7.62, -2.54)},
-    "CONN6": {str(i + 1): (5.08, 6.35 - 2.54 * i) for i in range(6)},
+    "CONN9": {str(i + 1): (5.08, 10.16 - 2.54 * i) for i in range(9)},
     "FUSE_H": {"1": (-3.81, 0), "2": (3.81, 0)},
 }
 
@@ -100,15 +100,24 @@ FOOTPRINTS = {
     "LED_H": "LED_THT:LED_D3.0mm",
     "D_V": "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal",
     "PC817": "Package_DIP:DIP-4_W7.62mm",
-    "CONN6": "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-6_1x06_P5.00mm_Horizontal",
+    "CONN9": "TerminalBlock_Phoenix:TerminalBlock_Phoenix_PT-1,5-9-3.5-H_1x09_P3.50mm_Horizontal",
     "FUSE_H": "Fuse:Fuse_Littelfuse_372_D8.50mm",
     "UNO_R4_WIFI": "Module:Arduino_UNO_R3",
 }
 
 
-# Terminal block, top to bottom. Each e-stop button is wired between ESn+ and ESn.
-J1_PINS = ["24V_IN", "ES1+", "ES1", "ES2+", "ES2", "0V"]
-J1_NETS = ["+24V_IN", "+24V", "ES1", "+24V", "ES2", "GND_24V"]
+# Terminal block, top to bottom, in the order of the channels on the board.
+# Each e-stop button is wired between ESn+ and ESn; each lidar output between Ln and a 0V terminal.
+J1_PINS = ["24V_IN", "0V", "L1", "ES2+", "ES2", "ES1+", "ES1", "L2", "0V"]
+J1_NETS = ["+24V_IN", "GND_24V", "L1", "+24V", "ES2", "+24V", "ES1", "L2", "GND_24V"]
+
+# channel number: (input net, Arduino pin, series resistor value, what it reads)
+CHANNELS = {
+    1: ("ES1", "D2", "1.5k", "E-stop 1: button released (contact closed)"),
+    2: ("ES2", "D3", "1.5k", "E-stop 2: button released (contact closed)"),
+    3: ("L1", "D4", "2.2k", "Lidar 1: output at 24 V (zone clear)"),
+    4: ("L2", "D5", "2.2k", "Lidar 2: output at 24 V (zone clear)"),
+}
 
 LIB = [
     libsym("R_H", "R", [rect(-2.54, -1.016, 2.54, 1.016)],
@@ -141,8 +150,8 @@ LIB = [
             poly([(1.778, -0.508), (3.81, -2.54), (5.08, -2.54)])],
            [pin("1", "A", -7.62, 2.54, 0, 2.54), pin("2", "K", -7.62, -2.54, 0, 2.54),
             pin("4", "C", 7.62, 2.54, 180, 2.54), pin("3", "E", 7.62, -2.54, 180, 2.54)]),
-    libsym("CONN6", "J", [rect(-7.62, -8.89, 2.54, 8.89, "background")],
-           [pin(str(i + 1), n, 5.08, 6.35 - 2.54 * i, 180, 2.54) for i, n in enumerate(J1_PINS)],
+    libsym("CONN9", "J", [rect(-7.62, -12.7, 2.54, 12.7, "background")],
+           [pin(str(i + 1), n, 5.08, 10.16 - 2.54 * i, 180, 2.54) for i, n in enumerate(J1_PINS)],
            hide_names=False, name_offset=0.508),
     libsym("FUSE_H", "F", [rect(-2.54, -1.016, 2.54, 1.016), poly([(-2.54, 0), (2.54, 0)])],
            [pin("1", "~", -3.81, 0, 0), pin("2", "~", 3.81, 0, 180)]),
@@ -194,16 +203,16 @@ def text(s, x, y, size=1.27):
 
 
 def channel(k, y):
-    """One e-stop input channel on the horizontal line y. k = 1 or 2."""
-    n_in, n_out = "ES%d" % k, "D%d" % (k + 1)
-    ra = place("R_H", "R%d" % (2 * k - 1), "1.5k", 71.12, y, ref_dy=-5.08, val_dy=-2.54)
-    rb = place("R_H", "R%d" % (2 * k), "1.5k", 81.28, y, ref_dy=-5.08, val_dy=-2.54)
+    """Input channel k (1..4) on the horizontal line y."""
+    n_in, n_out, r_val, what = CHANNELS[k]
+    ra = place("R_H", "R%d" % (2 * k - 1), r_val, 71.12, y, ref_dy=-5.08, val_dy=-2.54)
+    rb = place("R_H", "R%d" % (2 * k), r_val, 81.28, y, ref_dy=-5.08, val_dy=-2.54)
     r = {"1": ra["1"], "2": rb["2"]}
     wire(ra["2"], rb["1"])
     led = place("LED_H", "D%d" % k, "LED red", 97.79, y, ref_dy=-5.08)
-    dio = place("D_V", "D%d" % (k + 2), "1N4148", 88.9, y + 3.81, ref_dx=-5.08, ref_dy=-1.27, val_dx=-5.08, val_dy=1.27)
+    dio = place("D_V", "D%d" % (k + 4), "1N4148", 88.9, y + 3.81, ref_dx=-5.08, ref_dy=-1.27, val_dx=-5.08, val_dy=1.27)
     u = place("PC817", "U%d" % k, "PC817", 119.38, y + 2.54, ref_dx=-3.81, ref_dy=-7.62, val_dx=-3.81, val_dy=7.62)
-    rp = place("R_V", "R%d" % (k + 4), "10k", 137.16, y - 6.35, ref_dx=3.81, ref_dy=-1.27, val_dx=3.81, val_dy=1.27)
+    rp = place("R_V", "R%d" % (k + 8), "10k", 137.16, y - 6.35, ref_dx=3.81, ref_dy=-1.27, val_dx=3.81, val_dy=1.27)
 
     gnd_y = y + 7.62
     # 24 V side
@@ -217,14 +226,14 @@ def channel(k, y):
     wire(rp["2"], (rp["2"][0], y))
     wire(rp["1"], (rp["1"][0], y - 12.7)); label("IOREF", (rp["1"][0], y - 12.7))
     wire(u["3"], (152.4, u["3"][1])); label("GND", (152.4, u["3"][1]), right=True)
-    text("E-stop %d: button released (contact closed) -> %s LOW, LED lit" % (k, n_out), 60.96, y - 15.24)
+    text("%s -> %s LOW, LED lit" % (what, n_out), 60.96, y - 15.24)
 
 
-channel(1, 71.12)
-channel(2, 121.92)
+for k, y in ((1, 68.58), (2, 99.06), (3, 129.54), (4, 160.02)):
+    channel(k, y)
 
 # connectors
-j1 = place("CONN6", "J1", "24V + e-stops", 27.94, 96.52, ref_dx=-2.54, ref_dy=-11.43, val_dx=-2.54, val_dy=11.43)
+j1 = place("CONN9", "J1", "24V, e-stops, lidars", 27.94, 111.76, ref_dx=-2.54, ref_dy=-15.24, val_dx=-2.54, val_dy=15.24)
 f1 = place("FUSE_H", "F1", "T2A", 46.99, j1["1"][1], ref_dx=-1.27, ref_dy=-2.54, val_dx=2.54, val_dy=-2.54)
 wire(j1["1"], f1["1"])                                         # supply in -> fuse
 wire(f1["2"], (f1["2"][0] + 5.08, f1["2"][1])); label("+24V", (f1["2"][0] + 5.08, f1["2"][1]), right=True)
@@ -232,9 +241,10 @@ for i, name in enumerate(J1_NETS[1:], start=2):
     p = j1[str(i)]
     end = (p[0] + 10.16, p[1])
     wire(p, end); label(name, end, right=True)
-a1 = place("UNO_R4_WIFI", "A1", "UNO R4 WiFi or UNO Q", 200.66, 96.52, ref_dy=-26.67, val_dy=26.67)
+a1 = place("UNO_R4_WIFI", "A1", "UNO R4 WiFi or UNO Q", 200.66, 111.76, ref_dy=-26.67, val_dy=26.67)
 UNO_NETS = {UNO_NUM[n]: net for n, net in
-            {"IOREF": "IOREF", "GND1": "GND", "GND2": "GND", "D2": "D2", "D3": "D3"}.items()}
+            {"IOREF": "IOREF", "GND1": "GND", "GND2": "GND",
+             "D2": "D2", "D3": "D3", "D4": "D4", "D5": "D5"}.items()}
 for num, p in a1.items():
     if num not in UNO_NETS:
         no_connect(p)
@@ -244,18 +254,17 @@ for num, p in a1.items():
     wire(p, end)
     label(UNO_NETS[num], end, right=not left)
 
-text("Two e-stop inputs, 24 V loop through PC817 - shield for Arduino UNO R4 WiFi / UNO Q", 25.4, 30.48, 2.54)
-text("Loop current = (24 V - 1.2 V opto - 2.0 V LED) / 3.0 k = 6.9 mA.  Each 1.5 k (1/4 W): 72 mW at 24 V, 109 mW at 28.8 V.", 25.4, 38.1)
-text("Button pressed, wire cut or 24 V lost -> no current -> pin HIGH = STOP.  F1 protects the 24 V wires going out to the buttons.", 25.4, 41.91)
-text("GND_24V and GND are NOT connected: this is the isolation barrier.", 25.4, 45.72)
-text("Pull-ups go to IOREF: 5 V on the UNO R4 WiFi, 3.3 V on the UNO Q. Never to the 5V pin. Sketch: pinMode(D2/D3, INPUT).", 25.4, 49.53)
-text("ISOLATION", 106.68, 148.59, 1.27)
-items.append("(polyline (pts (xy 119.38 55.88) (xy 119.38 144.78)) (stroke (width 0.2) (type dash)) (uuid %s))" % uid())
+text("Safety inputs: 2 e-stops + 2 lidars, 24 V through PC817 - shield for Arduino UNO R4 WiFi / UNO Q", 25.4, 30.48, 2.54)
+text("E-stop loops: 2 x 1.5 k -> 6.9 mA (109 mW per resistor at 28.8 V).  Lidar inputs: 2 x 2.2 k -> 4.7 mA (75 mW).  All resistors 1/4 W.", 25.4, 38.1)
+text("No current (button pressed, zone occupied, wire cut, 24 V lost) -> pin HIGH = STOP.  F1 protects the 24 V wires going out to the buttons.", 25.4, 41.91)
+text("GND_24V and GND are NOT connected: this is the isolation barrier.  Pull-ups go to IOREF (5 V on UNO R4 WiFi, 3.3 V on UNO Q), never to 5V.", 25.4, 45.72)
+text("ISOLATION", 113.03, 173.99, 1.27)
+items.append("(polyline (pts (xy 119.38 53.34) (xy 119.38 171.45)) (stroke (width 0.2) (type dash)) (uuid %s))" % uid())
 
 sch = """(kicad_sch (version 20230121) (generator eeschema)
   (uuid %s)
   (paper "A4")
-  (title_block (title "E-stop inputs: 24 V loop through PC817") (date "2026-10-02") (rev "0.6")
+  (title_block (title "Safety inputs: 2 e-stops + 2 lidars") (date "2026-10-02") (rev "0.7")
     (comment 1 "Generated by generate.py - edit the script, not this file"))
   (lib_symbols
     %s)

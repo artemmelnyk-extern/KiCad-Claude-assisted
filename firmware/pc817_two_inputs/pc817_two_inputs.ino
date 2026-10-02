@@ -1,45 +1,47 @@
 /*
-  pc817_two_inputs.ino
-  Reads two e-stop loops (24 V through a normally-closed contact and a PC817) on D2 and D3 (Arduino UNO R4 WiFi
-  or UNO Q; any UNO-format board) and prints every edge with its time and the duration
-  of the state that just ended. No debounce: the point of the bench is to see
-  bounce and short pulses.
+  pc817_two_inputs.ino  (now four inputs; the folder name is kept)
+  Reads the four isolated 24 V inputs of the shield (Arduino UNO R4 WiFi or UNO Q; any
+  UNO-format board) and prints every edge with its time and the duration of the state that
+  just ended. No debounce: the point of the bench is to see bounce and short pulses.
+
+    D2 = e-stop 1   D3 = e-stop 2   D4 = lidar 1   D5 = lidar 2
 
   Wiring: see docs/pc817_bench.pdf. The board has external 10 k pull-ups to IOREF, so the
-  pins are plain INPUTs. Loop closed (button released) -> optocoupler conducts -> pin LOW.
+  pins are plain INPUTs. Current flows (button released / zone clear) -> pin LOW = OK.
 */
 
-const uint8_t PINS[2] = {2, 3};
-const char *NAMES[2] = {"ES1", "ES2"};
+const uint8_t N = 4;
+const uint8_t PINS[N] = {2, 3, 4, 5};
+const char *NAMES[N] = {"ES1", "ES2", "L1", "L2"};
 
-bool lastOn[2];
-unsigned long lastEdgeUs[2];
+bool lastOk[N];
+unsigned long lastEdgeUs[N];
 
-bool isOn(uint8_t i) { return digitalRead(PINS[i]) == LOW; }
+bool isOk(uint8_t i) { return digitalRead(PINS[i]) == LOW; }
 
 void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 2000) {}
   unsigned long now = micros();
-  for (uint8_t i = 0; i < 2; i++) {
+  for (uint8_t i = 0; i < N; i++) {
     pinMode(PINS[i], INPUT);
-    lastOn[i] = isOn(i);
+    lastOk[i] = isOk(i);
     lastEdgeUs[i] = now;
     Serial.print(NAMES[i]);
-    Serial.println(lastOn[i] ? " loop CLOSED = OK (start)" : " loop OPEN = STOP (start)");
+    Serial.println(lastOk[i] ? " OK (start)" : " STOP (start)");
   }
 }
 
 void loop() {
-  for (uint8_t i = 0; i < 2; i++) {
-    bool on = isOn(i);
-    if (on == lastOn[i]) continue;
+  for (uint8_t i = 0; i < N; i++) {
+    bool ok = isOk(i);
+    if (ok == lastOk[i]) continue;
     unsigned long now = micros();
     unsigned long heldUs = now - lastEdgeUs[i];   // wraps correctly after ~71 min
     lastEdgeUs[i] = now;
-    lastOn[i] = on;
+    lastOk[i] = ok;
     Serial.print(NAMES[i]);
-    Serial.print(on ? " loop CLOSED after " : " loop OPEN   after ");
+    Serial.print(ok ? " OK   after " : " STOP after ");
     Serial.print(heldUs);
     Serial.println(" us");
   }
