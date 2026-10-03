@@ -89,12 +89,14 @@ TERMINAL = {3: "3", 2: "5", 1: "7", 4: "8"}             # channel -> J1 terminal
 RAIL_DY = 8.3                                           # 24 V return rail under each channel
 BUS_X = 15.3                                            # 24 V return bus, between LED and optocoupler
 LOGIC_GND_X = 32.9
+CAP_X = 27.5                                            # capacitors, right of the optocouplers
+OUT_LANE = {1: 29.5, 2: 31.2}                           # middle rows: way up, clear of the capacitors
 J1_X, J1_Y, FUSE_Y = -22.0, 10.3, 3.0
 
 
 def refs(ch):
     return {"ra": "R%d" % (2 * ch - 1), "rb": "R%d" % (2 * ch), "led": "D%d" % ch,
-            "dio": "D%d" % (ch + 4), "u": "U%d" % ch, "rp": "R%d" % (ch + 8)}
+            "dio": "D%d" % (ch + 4), "u": "U%d" % ch, "rp": "R%d" % (ch + 8), "c": "C%d" % ch}
 
 
 # ref: (x, y, rotation) of the footprint origin (= pad 1 for these footprints)
@@ -108,6 +110,7 @@ for ch, y0 in ROWS:
         r["dio"]: (7.4, y0 + 4.0, 180),      # 1N4148, cathode on the right, next to the LED anode
         r["u"]:   (17.5, y0 + 4.0, 0),       # PC817: pins 1-2 on the 24 V side
         r["rp"]:  (35.28, y0, 180),          # pull-up, pad 2 right above the collector
+        r["c"]:   (CAP_X, y0 + 4.04, 270),   # optional filter capacitor, across pins 4 and 3
     })
 
 FPS = {}
@@ -157,6 +160,7 @@ for ch, y0 in ROWS:
     ref_text(r["ra"], -6.92, y0)
     ref_text(r["rb"], 5.38, y0)
     ref_text(r["rp"], 30.2, y0)
+    ref_text(r["c"], 30.2, y0 + 5.3)
     ref_text(r["dio"], 3.6, y0 + 6.0)
     ref_text(r["led"], 13.6, y0 + 1.4)
     ref_text(r["u"], 21.3, y0 + 5.27)
@@ -219,9 +223,12 @@ def route_channel(row, ch, y0):
         route(F, n_out, rp2, header)
     elif row == 3:                  # bottom row: up through the gap under the optocouplers
         route(B, n_out, u4, (header[0], u4[1]), header)
-    else:                           # middle rows: one lane each, right of the optocouplers
-        route(B, n_out, u4, (header[0], u4[1]), header)
+    else:                           # middle rows: one lane each, right of the capacitors
+        lane = OUT_LANE[row]
+        route(B, n_out, u4, (lane, u4[1]), (lane, 2.4), (header[0], 2.4 - (lane - header[0])), header)
     route(F, n_gnd, u3, (LOGIC_GND_X, u3[1]))
+    c1, _ = pad(r["c"], "1")
+    route(F, n_out, u4, c1)         # capacitor: output side; its GND pad sits on the GND link above
     return rail, n_g24, n_gnd, n_ioref, u3, rp1
 
 

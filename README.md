@@ -20,10 +20,12 @@ All four channels are the same; only the terminal wiring and the resistor value 
  e-stop:  24V ─[F1 T2A]─► ESn+ ──(button, NC)── ESn ─┐
  lidar:   lidar output (24 V when the zone is clear) ─ Ln ─┤
                                                       │
-        ─[R]─[R]─┬─[LED]─► PC817 pin 1      pin 4 ─┬─ D2..D5
-                 │                                  │
-             [1N4148]                            [10k] ─ IOREF
- 0V ─────────────┴───────── PC817 pin 2      pin 3 ─── GND
+        ─[R]─[R]─┬─[LED]─► PC817 pin 1      pin 4 ─┬──────┬─ D2..D5
+                 │                                  │      │
+             [1N4148]                            [10k]   [C 100n, optional]
+                 │                                  │      │
+ 0V ─────────────┴───────── PC817 pin 2           IOREF    │
+                                             pin 3 ────────┴─ GND
 ```
 
 | Pin | Input | Terminals | Series resistors | Current |
@@ -47,6 +49,12 @@ Every wiring failure reads as "stop".
   about 5 mA at 24 V; check the button's data sheet). A lidar output is electronic and needs none.
 - **Power, all resistors ¼ W:** each 1.5 kΩ dissipates 109 mW at 28.8 V (44 % of rating), each 2.2 kΩ
   75 mW (30 %).
+- **C1–C4 (100 nF) are optional.** With the 10 kΩ pull-up they form a 1 ms filter on the rising
+  (stop) edge: an opening shorter than about 1.5 ms never reaches the Arduino's HIGH threshold, and
+  every real stop is seen about 1.6 ms later. Fitted, they remove contact bounce and a lidar's
+  output test pulses in hardware; they also hide those short openings from the firmware, which can
+  then no longer count them. Leave them out to observe the raw signal. The timing figures are
+  calculated, not measured.
 - The 1N4148 protects the LEDs against a reversed connection (the PC817 LED tolerates only 6 V).
 - `0V` (24 V side) and `GND` (Arduino) are separate nets. Do not join them: that is the isolation.
   The lidars' 0 V must be connected to this board's `0V`.
@@ -108,6 +116,7 @@ A two-layer, through-hole Arduino UNO shield, 66 × 53 mm, four channels at a 10
   UNO R4 WiFi this is above the USB-C connector, and the lowest terminals reach the power jack.
 - Signal tracks are 0.5 mm, the fused 24 V tracks 1 mm. The 24 V return runs on the solder side.
 - Part references of the resistors, diodes and optocouplers are printed under the parts.
+- The optional capacitors stand right of the optocouplers, across pins 4 and 3.
 - The library footprint `Module:Arduino_UNO_R3` is placed **flipped to the back side**, because a
   shield sits above the Arduino. Unflipped, the shield comes out mirrored. Its courtyard is removed,
   since the shield's parts are meant to be inside the Arduino's outline.
