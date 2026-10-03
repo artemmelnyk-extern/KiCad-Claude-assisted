@@ -25,10 +25,10 @@ HERE = Path(__file__).resolve().parent
 OUT = HERE / "protoboard"
 NETLIST = HERE / "kicad" / "pc817_bench.net"
 
-ROWS, COLS = 16, 16
+ROWS, COLS = 16, 17
 C = 3                                   # first column of a channel
 BUS_24V_RET = 2                         # column of the 0V (24 V side) bus
-IOREF_COL = C + 12
+IOREF_COL = C + 13
 
 # channel: (schematic number, first row, input name, Arduino pin, resistor value)
 CHANNELS = [(1, 3, "ES1", "D2", "1.5k"), (2, 6, "ES2", "D3", "1.5k"),
@@ -65,6 +65,12 @@ for ch, r, name, pin, rval in CHANNELS:
     part("U%d" % ch, "U", "PC817", [("1", (r, C + 7)), ("2", (r + 1, C + 7)),
                                     ("3", (r + 1, C + 10)), ("4", (r, C + 10))])
     part("R%d" % (ch + 8), "R", "10k", [("2", (r, C + 11)), ("1", (r, C + 12))])
+    # optional filter capacitor, in the two spare rows above the channel: output side next to
+    # the output wire landing, GND side next to the GND landing of the channel above
+    part("C%d" % ch, "C", "100n opt.", [("1", (r - 1, C + 12)), ("2", (r - 2, C + 12))])
+    bridge((r - 1, C + 11), (r - 1, C + 12))        # output landing -> capacitor
+    bridge((r - 2, C + 11), (r - 2, C + 12))        # GND landing above -> capacitor
+    bridge((r, C + 12), (r, C + 13))                # pull-up -> IOREF bus
     ends[(r, C)] = "%s in" % name
     ends[(r - 1, C + 11)] = "%s out" % pin
     ends[(r + 1, C + 11)] = "GND"
@@ -110,6 +116,8 @@ ends[(CHANNELS[-1][1] + 1, IOREF_COL)] = "IOREF"
 wires.append(((CHANNELS[-1][1] + 1, IOREF_COL), "IOREF", "tab:purple", "logic supply reference"))
 # logic GND: daisy chain, then to the header
 gnd = [(r + 1, C + 11) for _, r, _, _, _ in CHANNELS]
+gnd.insert(0, (CHANNELS[0][1] - 2, C + 11))         # GND pad for the first channel's capacitor
+ends[gnd[0]] = "GND"
 for a, b in zip(gnd, gnd[1:]):
     wires.append((a, b, "black", "logic GND"))
 wires.append((gnd[-1], "GND", "black", "logic GND"))
@@ -213,7 +221,7 @@ def draw(S, fname, **save):
         (x1, y1), (x2, y2) = xy(a), xy(b)
         ax.plot([x1, x2], [y1, y2], color="#c9a227", lw=2.6 * lw, solid_capstyle="round", zorder=3)
     # parts
-    colour = {"R": "#d9b98a", "LED": "#e03b3b", "D": "#4a90d9", "U": "#333333", "F": "#b33"}
+    colour = {"R": "#d9b98a", "LED": "#e03b3b", "D": "#4a90d9", "U": "#333333", "F": "#b33", "C": "#e8a33d"}
     for ref, kind, value, holes in parts:
         pts = [xy(h) for h in holes]
         xs, ys = [p[0] for p in pts], [p[1] for p in pts]
@@ -289,7 +297,7 @@ def main():
              "- Columns %d and %d stay empty: they are the isolation gap under the optocouplers." % (C + 8, C + 9),
              "", "## 1. Parts", "", "| Part | Value | Holes | Note |", "|---|---|---|---|"]
     note = {"R": "stands upright", "LED": "first hole = anode (long leg)", "D": "stands upright; first hole = cathode (band)",
-            "U": "holes in pin order 1, 2, 3, 4; pin 1 = dot", "F": ""}
+            "U": "holes in pin order 1, 2, 3, 4; pin 1 = dot", "F": "", "C": "optional; either way round"}
     for ref, kind, value, holes in parts:
         lines.append("| %s | %s | %s | %s |" % (ref, value, "; ".join(hole(h) for h in holes), note[kind]))
     lines += ["", "Screw terminals, 5.08 mm pitch, in column 0:", "", "| Terminal | Hole |", "|---|---|"]

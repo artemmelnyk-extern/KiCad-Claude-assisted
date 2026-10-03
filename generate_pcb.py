@@ -132,7 +132,7 @@ def place_on_grid(ref):
         tx, ty = hole_xy(want["1"])
         cur = fp.GetPosition()
         fp.SetPosition(pcbnew.VECTOR2I(cur.x + pcbnew.FromMM(tx - x1), cur.y + pcbnew.FromMM(ty - y1)))
-        if all(max(abs(a - b) for a, b in zip(pad_mm(p), hole_xy(want[p.GetNumber()]))) < 0.01 for p in fp.Pads()):
+        if all(max(abs(a - b) for a, b in zip(pad_mm(p), hole_xy(want[p.GetNumber()]))) < 0.05 for p in fp.Pads()):   # 2.50 mm parts in 2.54 mm holes
             return rot
     sys.exit("%s (%s) does not fit its holes %s in any rotation" % (ref, COMPS[ref][0], want))
 
