@@ -146,11 +146,11 @@ Screw terminals, 5.08 mm pitch, along row 1, wire entry towards the top edge:
 | row 18, col 14 | row 18, col 17 | logic GND |
 | row 18, col 5 | header pad **GND** (row 16, col 2) | logic GND |
 
-## 5. Before soldering
+## 5. Checked on the real board (2026-10-05)
 
-1. Count the pads on your board against the drawing: 20 columns in rows 1-4, 14 columns
-   (4 to 17) in rows 11-25.
-2. With a multimeter, confirm that each gold pad in the drawing is joined to its header pin.
+1. Pad count matches the drawing: 20 columns in rows 1-4, 14 columns (4 to 17) in rows 11-25.
+2. Each inner pad beside a header pin is joined to that pin (multimeter).
+3. The 24V terminal pin at column 6 clears the Arduino's power jack.
 
 ## 6. Before applying 24 V
 

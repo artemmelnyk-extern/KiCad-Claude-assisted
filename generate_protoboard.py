@@ -12,7 +12,7 @@ HOLES ARE NAMED (row, column), seen from the COMPONENT side with the Arduino's U
   * columns 1..20 are the numbers printed along the top edge of the board;
   * row 1 is the row next to those numbers, rows count downwards to 25.
 The power/analog header is then on the left edge and the digital header on the right edge.
-The hole map below was read from a photo of the board: check it against the real one.
+The hole map below was read from a photo, then confirmed on the real board (2026-10-05).
 """
 import re
 import sys
@@ -344,10 +344,10 @@ def main():
     for p, q, _, why in wires:
         to = "header pad **%s** (%s)" % (q, hole(HEADER_HOLE[q])) if isinstance(q, str) else hole(q)
         lines.append("| %s | %s | %s |" % (hole(p), to, why))
-    lines += ["", "## 5. Before soldering", "",
-              "1. Count the pads on your board against the drawing: 20 columns in rows 1-4, 14 columns",
-              "   (4 to 17) in rows 11-25.",
-              "2. With a multimeter, confirm that each gold pad in the drawing is joined to its header pin.",
+    lines += ["", "## 5. Checked on the real board (2026-10-05)", "",
+              "1. Pad count matches the drawing: 20 columns in rows 1-4, 14 columns (4 to 17) in rows 11-25.",
+              "2. Each inner pad beside a header pin is joined to that pin (multimeter).",
+              "3. The 24V terminal pin at column 6 clears the Arduino's power jack.",
               "", "## 6. Before applying 24 V", "",
               "1. No continuity between any `0V` terminal and the Arduino `GND` pin.",
               "2. No continuity between the `24V` or `ES+` terminal and any header pin.",

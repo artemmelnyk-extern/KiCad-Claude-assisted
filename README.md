@@ -187,7 +187,8 @@ reports one "unconnected" item per wire plus one for the two GND header pins. Th
 
 The plan is laid out for the **green ElectroCookie "Uno ProtoShield Universal"** and names every hole
 by the column numbers printed on that board (1-20) and a row count from the printed edge. The hole
-map was read from a photo; `BUILD.md` lists what to check on the real board before soldering.
+map was read from a photo and then confirmed on the real board (pad count, header pads, jack
+clearance).
 
 ## Licence
 
