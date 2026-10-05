@@ -20,7 +20,7 @@ All four channels are the same; only the terminal wiring and the resistor value 
  e-stop:  24V ─[F1 T2A]─► ESn+ ──(button, NC)── ESn ─┐
  lidar:   lidar output (24 V when the zone is clear) ─ Ln ─┤
                                                       │
-        ─[R]─[R]─┬─[LED]─► PC817 pin 1      pin 4 ─┬──────┬─ D2..D5
+        ───[R]───┬─[LED]─► PC817 pin 1      pin 4 ─┬──────┬─ D2..D5
                  │                                  │      │
              [1N4148]                            [10k]   [C 100n, optional]
                  │                                  │      │
@@ -28,12 +28,12 @@ All four channels are the same; only the terminal wiring and the resistor value 
                                              pin 3 ────────┴─ GND
 ```
 
-| Pin | Input | Terminals | Series resistors | Current |
+| Pin | Input | Terminals | Series resistor (½ W) | Current |
 |---|---|---|---|---|
-| D2 | e-stop 1 | `ES1+`, `ES1` | 2 × 1.5 kΩ | 6.9 mA |
-| D3 | e-stop 2 | `ES2+`, `ES2` | 2 × 1.5 kΩ | 6.9 mA |
-| D4 | lidar 1 | `L1`, `0V` | 2 × 2.2 kΩ | 4.7 mA |
-| D5 | lidar 2 | `L2`, `0V` | 2 × 2.2 kΩ | 4.7 mA |
+| D2 | e-stop 1 | `ES1+`, `ES1` | R1 = 3.3 kΩ | 6.3 mA |
+| D3 | e-stop 2 | `ES2+`, `ES2` | R2 = 3.3 kΩ | 6.3 mA |
+| D4 | lidar 1 | `L1`, `0V` | R3 = 4.7 kΩ | 4.4 mA |
+| D5 | lidar 2 | `L2`, `0V` | R4 = 4.7 kΩ | 4.4 mA |
 
 | State | LED | Pin |
 |---|---|---|
@@ -45,10 +45,12 @@ Every wiring failure reads as "stop".
 - **Terminal block J1**, top to bottom: `24V`, `0V`, `L1`, `ES2+`, `ES2`, `ES1+`, `ES1`, `L2`, `0V`.
   The order follows the channels on the board.
 - **F1 (T2A)** protects the 24 V wires that leave the board for the buttons.
-- **E-stop loops carry 6.9 mA** because switch contacts need a minimum current to stay reliable (often
+- **E-stop loops carry 6.3 mA** because switch contacts need a minimum current to stay reliable (often
   about 5 mA at 24 V; check the button's data sheet). A lidar output is electronic and needs none.
-- **Power, all resistors ¼ W:** each 1.5 kΩ dissipates 109 mW at 28.8 V (44 % of rating), each 2.2 kΩ
-  75 mW (30 %).
+- **R1–R4 must be real ½ W parts** (body about 9 × 3.2 mm). At 28.8 V a 3.3 kΩ dissipates 0.20 W
+  (40 % of ½ W) and a 4.7 kΩ 0.14 W (28 %). A ¼ W-size resistor (6 × 2.3 mm) sold as ½ W would run
+  at 80 % of its real rating: measure the body before fitting. The 10 kΩ pull-ups R5–R8 dissipate
+  2.5 mW; any rating will do.
 - **C1–C4 (100 nF) are optional.** With the 10 kΩ pull-up they form a 1 ms filter on the rising
   (stop) edge: an opening shorter than about 1.5 ms never reaches the Arduino's HIGH threshold, and
   every real stop is seen about 1.6 ms later. Fitted, they remove contact bounce and a lidar's

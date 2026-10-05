@@ -31,8 +31,8 @@ BUS_24V_RET = 2                         # column of the 0V (24 V side) bus
 IOREF_COL = C + 13
 
 # channel: (schematic number, first row, input name, Arduino pin, resistor value)
-CHANNELS = [(1, 3, "ES1", "D2", "1.5k"), (2, 6, "ES2", "D3", "1.5k"),
-            (3, 9, "L1", "D4", "2.2k"), (4, 12, "L2", "D5", "2.2k")]
+CHANNELS = [(1, 3, "ES1", "D2", "3.3k 1/2W"), (2, 6, "ES2", "D3", "3.3k 1/2W"),
+            (3, 9, "L1", "D4", "4.7k 1/2W"), (4, 12, "L2", "D5", "4.7k 1/2W")]
 # screw terminals in column 0, one every 2 rows (5.08 mm blocks)
 TERMINALS = ["24V", "ES+", "ES1", "ES2", "L1", "L2", "0V", "0V"]
 TERM_ROW = {i: 2 * i for i in range(len(TERMINALS))}
@@ -58,25 +58,25 @@ def bridge(a, b):
 
 
 for ch, r, name, pin, rval in CHANNELS:
-    part("R%d" % (2 * ch - 1), "R", rval, [("1", (r, C + 1)), ("2", (r, C + 2))])
-    part("R%d" % (2 * ch), "R", rval, [("1", (r, C + 3)), ("2", (r, C + 4))])
+    # one 1/2 W series resistor, upright. Its body (3.2 mm) stands on pin 1, in the channel's
+    # first column, clear of the fuse above channel 1.
+    part("R%d" % ch, "R", rval, [("1", (r, C)), ("2", (r, C + 1))])
     part("D%d" % ch, "LED", "LED", [("2", (r, C + 5)), ("1", (r, C + 6))])            # 2 = anode
     part("D%d" % (ch + 4), "D", "1N4148", [("1", (r + 1, C + 5)), ("2", (r + 1, C + 4))])   # 1 = cathode; body away from the LED
     part("U%d" % ch, "U", "PC817", [("1", (r, C + 7)), ("2", (r + 1, C + 7)),
                                     ("3", (r + 1, C + 10)), ("4", (r, C + 10))])
-    part("R%d" % (ch + 8), "R", "10k", [("2", (r, C + 11)), ("1", (r, C + 12))])
+    part("R%d" % (ch + 4), "R", "10k", [("2", (r, C + 11)), ("1", (r, C + 12))])
     # optional filter capacitor, in the two spare rows above the channel: output side next to
     # the output wire landing, GND side next to the GND landing of the channel above
     part("C%d" % ch, "C", "100n opt.", [("1", (r - 1, C + 12)), ("2", (r - 2, C + 12))])
     bridge((r - 1, C + 11), (r - 1, C + 12))        # output landing -> capacitor
     bridge((r - 2, C + 11), (r - 2, C + 12))        # GND landing above -> capacitor
     bridge((r, C + 12), (r, C + 13))                # pull-up -> IOREF bus
-    ends[(r, C)] = "%s in" % name
+    ends[(r + 1, C)] = "%s in" % name               # input wire lands under the resistor
     ends[(r - 1, C + 11)] = "%s out" % pin
     ends[(r + 1, C + 11)] = "GND"
-    bridge((r, C), (r, C + 1))                      # input wire -> first resistor
-    bridge((r, C + 2), (r, C + 3))                  # resistor 1 -> resistor 2
-    bridge((r, C + 4), (r, C + 5))                  # resistor 2 -> LED anode
+    bridge((r + 1, C), (r, C))                      # input wire -> resistor
+    buses.append([(r, c) for c in range(C + 1, C + 6)])   # resistor -> LED anode, bare wire along the row
     bridge((r, C + 5), (r + 1, C + 5))              # LED anode -> diode cathode
     bridge((r, C + 6), (r, C + 7))                  # LED cathode -> optocoupler pin 1
     bridge((r + 1, C + 4), (r + 2, C + 4))          # diode anode -> 0V strip below
@@ -103,7 +103,7 @@ for ch, r, name, pin, rval in CHANNELS:
     tr = TERM_ROW[TERMINALS.index(name)]
     ends[(tr, 1)] = name
     bridge((tr, 0), (tr, 1))
-    wires.append(((tr, 1), (r, C), "tab:orange", "input"))
+    wires.append(((tr, 1), (r + 1, C), "tab:orange", "input"))
 # 0V bus down column 2, joined to both 0V terminals
 first_strip = CHANNELS[0][1] + 2
 buses.append([(r, BUS_24V_RET) for r in range(first_strip, ROWS)])
@@ -266,7 +266,7 @@ def draw(S, fname, **save):
     ax.text(-2.0 * P, -(ROWS + 1.3) * P,
             "COMPONENT SIDE.  Yellow = solder bridge between two pads (solder side).\n"
             "Grey = bare wire soldered along the pads (solder side).  Thin coloured = insulated wire.\n"
-            "Resistors and 1N4148 stand upright in two neighbouring holes.\n"
+            "Resistors and 1N4148 stand upright in two neighbouring holes; R1-R4 are 1/2 W.\n"
             "K = cathode (short LED leg, diode band).  White dot = PC817 pin 1.\n"
             "The fuse body (8.5 mm) covers rows 0-2 around columns 4-6.",
             ha="left", va="top", fontsize=4.4 * fs)
