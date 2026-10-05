@@ -240,7 +240,7 @@ def external_estops(j1):
         gline([(10.16, y_ret), (col, y_ret), (col, y_plus), (edge, y_plus)])    # feed wire from ES+
         text(name, 3.0 if col > 6 else 0.5, y_ret + 0.6 + (1.9 if y_plus < y_ret - 3 else 0), 1.1, right=True)
         ys += [y_ret, y_plus]
-    top, bottom = min(ys) - 12.7, max(ys) + 8.9
+    top, bottom = min(ys) - 12.7, max(ys) + (12.4 if "ES+" in rows else 8.9)   # more room when one screw feeds both
     gline([(-12.0, top), (18.4, top), (18.4, bottom), (-12.0, bottom), (-12.0, top)], dash=True)
     for n, line in enumerate(("EXTERNAL - not on the board", "Emergency-stop buttons:", "1 NC contact, 2 terminals.",
                               "Pressed = open = STOP.")):
