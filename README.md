@@ -185,8 +185,9 @@ In KiCad's board editor the insulated wires appear as ratsnest lines, and the de
 reports one "unconnected" item per wire plus one for the two GND header pins. That is expected;
 `check.sh` verifies the count and that the model matches the schematic.
 
-The plan needs **16 rows × 17 columns** of isolated pads (41 × 43 mm). The optional capacitors C1–C4 stand in column 15, in the spare rows above each channel. Where that grid sits relative to the
-headers is assumed in `generate_pcb.py` (`GRID_X0`, `GRID_Y0`); measure the real board.
+The plan is laid out for the **green ElectroCookie "Uno ProtoShield Universal"** and names every hole
+by the column numbers printed on that board (1-20) and a row count from the printed edge. The hole
+map was read from a photo; `BUILD.md` lists what to check on the real board before soldering.
 
 ## Licence
 

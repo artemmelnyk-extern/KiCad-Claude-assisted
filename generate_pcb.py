@@ -13,10 +13,8 @@ can check it:
 
 Must run with KiCad's own Python (module pcbnew), after generate.py and the netlist export.
 
-Coordinates: x right, y down, component side, USB on the left. The digital header is the
-row y = 0, the power header the row y = 48.26, and x = 0 is the first pin of the power
-header. Where the grid sits on a real proto shield is an ASSUMPTION (GRID_X0, GRID_Y0):
-measure the board.
+Hole positions come from generate_protoboard.py, which names them (row, column) as printed
+on the green ElectroCookie board; hole_xy() below converts them to millimetres.
 """
 import os
 import re
@@ -32,7 +30,6 @@ import generate_protoboard as plan      # the build plan: holes, bridges, bare w
 OUT = HERE / "kicad" / "pc817_bench.kicad_pcb"
 ORIGIN = (120.0, 80.0)
 P = 2.54
-GRID_X0, GRID_Y0 = -22.86, 5.08         # position of hole (row 0, col 0)
 F, B = pcbnew.F_Cu, pcbnew.B_Cu
 
 
@@ -54,7 +51,11 @@ def mm(x, y):
 
 
 def hole_xy(h):
-    return GRID_X0 + h[1] * P, GRID_Y0 + h[0] * P
+    """Board hole (row, column) of the build plan -> millimetres. Seen from the component side
+    with the USB end up, rows run along the Arduino's length and columns across it: row 12 is
+    the IOREF pin, column 1 the power header and column 20 the digital header."""
+    row, col = h
+    return (row - 11) * P, (20 - col) * P
 
 
 # --------------------------------------------------------------------------- netlist
@@ -90,7 +91,7 @@ def net(name):
 TARGET = {}
 for h, (ref, num) in plan.legs.items():
     TARGET.setdefault(ref, {})[num] = h
-TARGET["J1"] = {str(i + 1): (plan.TERM_ROW[i], 0) for i in range(len(plan.TERMINALS))}
+TARGET["J1"] = {str(i + 1): h for i, h in enumerate(plan.TERM_HOLES)}
 
 FPS = {}
 
@@ -194,13 +195,15 @@ X0, Y0, X1, Y1 = -27.94, -2.54, 38.1, 50.8                 # UNO shield rectangl
 for a, b in (((X0, Y0), (X1, Y0)), ((X1, Y0), (X1, Y1)), ((X1, Y1), (X0, Y1)), ((X0, Y1), (X0, Y0))):
     shape(pcbnew.Edge_Cuts, pcbnew.SHAPE_T_SEGMENT, a, b, 0.1)
 
-# the grid of the plan, for reference (Dwgs.User): one circle per hole, numbered rows and columns
-for r in range(plan.ROWS):
-    text(pcbnew.Dwgs_User, str(r), GRID_X0 + plan.COLS * P + 1.0, GRID_Y0 + r * P, 0.8)
-    for c in range(plan.COLS):
-        shape(pcbnew.Dwgs_User, pcbnew.SHAPE_T_CIRCLE, hole_xy((r, c)), 0.5, 0.05)
-for c in range(plan.COLS):
-    text(pcbnew.Dwgs_User, str(c), GRID_X0 + c * P, GRID_Y0 + plan.ROWS * P, 0.8)
+# the board's isolated pads, for reference (Dwgs.User), with the printed column numbers
+for h in sorted(plan.FREE):
+    shape(pcbnew.Dwgs_User, pcbnew.SHAPE_T_CIRCLE, hole_xy(h), 0.5, 0.05)
+for c in range(1, plan.COLS + 1):
+    x, y = hole_xy((0, c))
+    text(pcbnew.Dwgs_User, str(c), x - 1.0, y, 0.8)
+for r in range(1, plan.ROWS + 1, 2):
+    x, y = hole_xy((r, 21))
+    text(pcbnew.Dwgs_User, str(r), x, y - 0.6, 0.8)
 
 # insulated wires (Cmts.User): from a hole to a hole, or to a header pin
 HEADER_PAD = {"D2": "17", "D3": "18", "D4": "19", "D5": "20", "IOREF": "2", "GND": "7"}
@@ -210,7 +213,7 @@ for a, b, _, why in plan.wires:
     else:
         end = hole_xy(b)
     shape(pcbnew.Cmts_User, pcbnew.SHAPE_T_SEGMENT, hole_xy(a), end, 0.3)
-text(pcbnew.Cmts_User, "Cmts.User lines = insulated wires", 22.0, 44.0, 0.8)
+text(pcbnew.Cmts_User, "Cmts.User lines = insulated wires", 30.0, 24.0, 0.8)
 
 for ref, fp in FPS.items():            # keep the reference texts small: the grid is dense
     t = fp.Reference()
