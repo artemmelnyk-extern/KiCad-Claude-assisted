@@ -95,8 +95,8 @@ J1_X, J1_Y, FUSE_Y = -22.0, 10.3, 3.0
 
 
 def refs(ch):
-    return {"ra": "R%d" % (2 * ch - 1), "rb": "R%d" % (2 * ch), "led": "D%d" % ch,
-            "dio": "D%d" % (ch + 4), "u": "U%d" % ch, "rp": "R%d" % (ch + 8), "c": "C%d" % ch}
+    return {"r": "R%d" % ch, "led": "D%d" % ch,
+            "dio": "D%d" % (ch + 4), "u": "U%d" % ch, "rp": "R%d" % (ch + 4), "c": "C%d" % ch}
 
 
 # ref: (x, y, rotation) of the footprint origin (= pad 1 for these footprints)
@@ -104,9 +104,9 @@ PLACE = {"A1": (0.0, 48.26, 0), "J1": (J1_X, J1_Y, 270), "F1": (-20.5, FUSE_Y, 1
 for ch, y0 in ROWS:
     r = refs(ch)
     PLACE.update({
-        r["ra"]:  (-12.0, y0, 0),            # series resistor 1: input -> M
-        r["rb"]:  (0.3, y0, 0),              # series resistor 2: M -> N
-        r["led"]: (13.0, y0 + 4.0, 180),     # indicator LED, anode on the left, under the end of rb
+        r["r"]:   (-2.24, y0 - 0.3, 0),      # series resistor, 1/2 W: input -> N (pad 2 above the LED anode;
+                                             # 0.3 mm up so its wider body clears the LED)
+        r["led"]: (13.0, y0 + 4.0, 180),     # indicator LED, anode on the left, under the end of the resistor
         r["dio"]: (7.4, y0 + 4.0, 180),      # 1N4148, cathode on the right, next to the LED anode
         r["u"]:   (17.5, y0 + 4.0, 0),       # PC817: pins 1-2 on the 24 V side
         r["rp"]:  (35.28, y0, 180),          # pull-up, pad 2 right above the collector
@@ -157,8 +157,7 @@ def ref_text(ref, x, y, size=0.8):
 # reference texts: on the part's own outline (hidden once assembled) where rows are too close
 for ch, y0 in ROWS:
     r = refs(ch)
-    ref_text(r["ra"], -6.92, y0)
-    ref_text(r["rb"], 5.38, y0)
+    ref_text(r["r"], 4.11, y0 - 0.3)
     ref_text(r["rp"], 30.2, y0)
     ref_text(r["c"], 30.2, y0 + 5.3)
     ref_text(r["dio"], 3.6, y0 + 6.0)
@@ -191,10 +190,8 @@ LANES = [-18.8, -17.1, -15.4, -14.0]       # where each input track turns toward
 
 def route_channel(row, ch, y0):
     r = refs(ch)
-    ra1, n_in = pad(r["ra"], "1")
-    ra2, n_m = pad(r["ra"], "2")
-    rb1, _ = pad(r["rb"], "1")
-    rb2, n_n = pad(r["rb"], "2")
+    ra1, n_in = pad(r["r"], "1")
+    rb2, n_n = pad(r["r"], "2")
     led_a, _ = pad(r["led"], "2")
     led_k, n_k = pad(r["led"], "1")
     dio_k, _ = pad(r["dio"], "1")
@@ -209,7 +206,6 @@ def route_channel(row, ch, y0):
 
     # 24 V side, component layer
     route(F, n_in, jin, (LANES[row], jin[1]), (LANES[row], ra1[1]), ra1)
-    route(F, n_m, ra2, rb1)
     route(F, n_n, rb2, led_a, dio_k)
     route(F, n_k, led_k, u1)
     # 24 V return, solder layer: a rail under the channel
