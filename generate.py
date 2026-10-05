@@ -166,6 +166,11 @@ LIB = [
 items = []
 
 
+# Everything is drawn in "design" coordinates and shifted right by DX when written, to leave
+# room on the left of the sheet for the external devices wired to the terminal block.
+DX = 30.48
+
+
 def place(sym, ref, value, x, y, ref_dx=0.0, ref_dy=-3.81, val_dx=0.0, val_dy=3.81):
     pins = " ".join('(pin "%s" (uuid %s))' % (n, uid()) for n in PINS[sym])
     items.append("""(symbol (lib_id "bench:%s") (at %g %g 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid %s)
@@ -175,8 +180,8 @@ def place(sym, ref, value, x, y, ref_dx=0.0, ref_dy=-3.81, val_dx=0.0, val_dy=3.
     (property "Datasheet" "" (at %g %g 0) (effects (font (size 1.27 1.27)) hide))
     %s
     (instances (project "%s" (path "/%s" (reference "%s") (unit 1)))))"""
-                 % (sym, x, y, uid(), ref, x + ref_dx, y + ref_dy, FONT, value, x + val_dx, y + val_dy, FONT,
-                    FOOTPRINTS[sym], x, y, x, y, pins, PROJECT, ROOT, ref))
+                 % (sym, x + DX, y, uid(), ref, x + DX + ref_dx, y + ref_dy, FONT, value, x + DX + val_dx, y + val_dy, FONT,
+                    FOOTPRINTS[sym], x + DX, y, x + DX, y, pins, PROJECT, ROOT, ref))
     # schematic pin positions (y axis points down in a sheet)
     return {n: (round(x + px, 2), round(y - py, 2)) for n, (px, py) in PINS[sym].items()}
 
@@ -184,26 +189,65 @@ def place(sym, ref, value, x, y, ref_dx=0.0, ref_dy=-3.81, val_dx=0.0, val_dy=3.
 def wire(*pts):
     for a, b in zip(pts, pts[1:]):
         items.append("(wire (pts (xy %g %g) (xy %g %g)) (stroke (width 0) (type default)) (uuid %s))"
-                     % (a[0], a[1], b[0], b[1], uid()))
+                     % (a[0] + DX, a[1], b[0] + DX, b[1], uid()))
 
 
 def junction(p):
-    items.append("(junction (at %g %g) (diameter 0) (color 0 0 0 0) (uuid %s))" % (p[0], p[1], uid()))
+    items.append("(junction (at %g %g) (diameter 0) (color 0 0 0 0) (uuid %s))" % (p[0] + DX, p[1], uid()))
 
 
 def label(name, p, right=False):
     just = "right bottom" if right else "left bottom"
     items.append('(label "%s" (at %g %g 0) (effects (font (size 1.27 1.27)) (justify %s)) (uuid %s))'
-                 % (name, p[0], p[1], just, uid()))
+                 % (name, p[0] + DX, p[1], just, uid()))
 
 
 def no_connect(p):
-    items.append("(no_connect (at %g %g) (uuid %s))" % (p[0], p[1], uid()))
+    items.append("(no_connect (at %g %g) (uuid %s))" % (p[0] + DX, p[1], uid()))
 
 
-def text(s, x, y, size=1.27):
-    items.append('(text "%s" (at %g %g 0) (effects (font (size %g %g)) (justify left bottom)) (uuid %s))'
-                 % (s, x, y, size, size, uid()))
+def text(s, x, y, size=1.27, right=False):
+    items.append('(text "%s" (at %g %g 0) (effects (font (size %g %g)) (justify %s bottom)) (uuid %s))'
+                 % (s, x + DX, y, size, size, "right" if right else "left", uid()))
+
+
+# graphics that are NOT part of the circuit (no net, nothing on the board)
+def gline(pts, dash=False, width=0.2):
+    items.append("(polyline (pts %s) (stroke (width %g) (type %s)) (uuid %s))"
+                 % (" ".join("(xy %g %g)" % (x + DX, y) for x, y in pts), width, "dash" if dash else "default", uid()))
+
+
+def gcircle(x, y, r):
+    items.append("(circle (center %g %g) (radius %g) (stroke (width 0.2) (type default)) (fill (type none)) (uuid %s))"
+                 % (x + DX, y, r, uid()))
+
+
+def external_estops(j1):
+    """Draw the two emergency-stop buttons left of the terminal block: they are wired in the
+    field, not mounted on the board. Each has one normally-closed contact (two terminals)."""
+    edge = 27.94 - 7.62                      # left edge of the J1 symbol
+    rows = {n: j1[str(i + 1)][1] for i, n in enumerate(J1_PINS)}
+    buttons = [(1, "S1  FRONT"), (2, "S2  REAR")]
+    ys = []
+    for k, name in buttons:
+        y_ret = rows["ES%d" % k]
+        y_plus = rows.get("ES%d+" % k, rows.get("ES+"))      # own screw, or the shared one
+        col = 7.62 - 2.54 * (k - 1)
+        gline([(edge, y_ret), (15.24, y_ret)])               # return wire: contact -> ESk
+        gcircle(15.24, y_ret, 0.4); gcircle(10.16, y_ret, 0.4)
+        gline([(10.16, y_ret), (15.6, y_ret - 1.0)], width=0.3)      # closed contact (drawn at rest)
+        gline([(15.24, y_ret - 0.2), (15.24, y_ret - 1.4)])
+        gline([(10.16, y_ret), (col, y_ret), (col, y_plus), (edge, y_plus)])    # feed wire from ES+
+        text(name, 3.0 if col > 6 else 0.5, y_ret + 0.6 + (1.9 if y_plus < y_ret - 3 else 0), 1.1, right=True)
+        ys += [y_ret, y_plus]
+    top, bottom = min(ys) - 12.7, max(ys) + 8.9
+    gline([(-12.0, top), (18.4, top), (18.4, bottom), (-12.0, bottom), (-12.0, top)], dash=True)
+    for n, line in enumerate(("EXTERNAL - not on the board", "Emergency-stop buttons:", "1 NC contact, 2 terminals.",
+                              "Pressed = open = STOP.")):
+        text(line, -11.0, top + 2.6 + 2.1 * n, 1.2 if n == 0 else 1.1)
+    text("S1 = ES1 = pin D2", -11.0, bottom - 4.4, 1.1)
+    text("S2 = ES2 = pin D3", -11.0, bottom - 2.4, 1.1)
+    text("front / rear: your choice", -11.0, bottom - 0.5, 1.0)
 
 
 def channel(k, y):
@@ -228,12 +272,12 @@ def channel(k, y):
     wire(rp["1"], (rp["1"][0], y - 12.7)); label("IOREF", (rp["1"][0], y - 12.7))
     wire(u["3"], (152.4, u["3"][1])); label("GND", (152.4, u["3"][1]), right=True)
     # optional filter capacitor between the output and logic GND (1 ms with the 10 k pull-up)
-    c = place("C_V", "C%d" % k, "100n opt.", 144.78, y + 2.54, ref_dx=3.81, ref_dy=-1.27, val_dx=5.08, val_dy=1.27)
+    c = place("C_V", "C%d" % k, "100n opt.", 144.78, y + 2.54, ref_dx=3.3, ref_dy=0.4, val_dx=0.0, val_dy=5.3)
     junction(c["1"]); junction(c["2"])
     text("%s -> %s LOW, LED lit" % (what, n_out), 60.96, y - 15.24)
 
 
-for k, y in ((1, 68.58), (2, 99.06), (3, 129.54), (4, 160.02)):
+for k, y in ((1, 63.5), (2, 93.98), (3, 124.46), (4, 154.94)):
     channel(k, y)
 
 # connectors
@@ -245,6 +289,7 @@ for i, name in enumerate(J1_NETS[1:], start=2):
     p = j1[str(i)]
     end = (p[0] + 10.16, p[1])
     wire(p, end); label(name, end, right=True)
+external_estops(j1)
 a1 = place("UNO_R4_WIFI", "A1", "UNO R4 WiFi or UNO Q", 200.66, 111.76, ref_dy=-26.67, val_dy=26.67)
 UNO_NETS = {UNO_NUM[n]: net for n, net in
             {"IOREF": "IOREF", "GND1": "GND", "GND2": "GND",
@@ -253,23 +298,23 @@ for num, p in a1.items():
     if num not in UNO_NETS:
         no_connect(p)
         continue
-    left = p[0] < 200.66
+    left = p[0] < 200.66            # design coordinates: the pin positions are not shifted
     end = (p[0] - 10.16, p[1]) if left else (p[0] + 10.16, p[1])
     wire(p, end)
     label(UNO_NETS[num], end, right=not left)
 
-text("Safety inputs: 2 e-stops + 2 lidars, 24 V through PC817 - shield for Arduino UNO R4 WiFi / UNO Q", 25.4, 30.48, 2.54)
-text("E-stop loops: 3.3 k -> 6.3 mA (0.20 W at 28.8 V).  Lidar inputs: 4.7 k -> 4.4 mA (0.14 W).  R1-R4 are 1/2 W (body 9 x 3.2 mm); pull-ups 1/4 W.", 25.4, 38.1)
-text("C1-C4 are OPTIONAL: fitted, an opening shorter than about 1.5 ms is not seen by the Arduino, and every stop is seen about 1.6 ms later.", 25.4, 49.53)
-text("No current (button pressed, zone occupied, wire cut, 24 V lost) -> pin HIGH = STOP.  F1 protects the 24 V wires going out to the buttons.", 25.4, 41.91)
-text("GND_24V and GND are NOT connected: this is the isolation barrier.  Pull-ups go to IOREF (5 V on UNO R4 WiFi, 3.3 V on UNO Q), never to 5V.", 25.4, 45.72)
-text("ISOLATION", 113.03, 173.99, 1.27)
-items.append("(polyline (pts (xy 119.38 53.34) (xy 119.38 171.45)) (stroke (width 0.2) (type dash)) (uuid %s))" % uid())
+text("Safety inputs: 2 e-stops + 2 lidars, 24 V through PC817 - shield for Arduino UNO R4 WiFi / UNO Q", 25.4, 27.94, 2.54)
+text("E-stop loops: 3.3 k -> 6.3 mA (0.20 W at 28.8 V).  Lidar inputs: 4.7 k -> 4.4 mA (0.14 W).  R1-R4 are 1/2 W (body 9 x 3.2 mm); pull-ups 1/4 W.", 25.4, 34.29)
+text("C1-C4 are OPTIONAL: fitted, an opening shorter than about 1.5 ms is not seen by the Arduino, and every stop is seen about 1.6 ms later.", 25.4, 45.72)
+text("No current (button pressed, zone occupied, wire cut, 24 V lost) -> pin HIGH = STOP.  F1 protects the 24 V wires going out to the buttons.", 25.4, 38.1)
+text("GND_24V and GND are NOT connected: this is the isolation barrier.  Pull-ups go to IOREF (5 V on UNO R4 WiFi, 3.3 V on UNO Q), never to 5V.", 25.4, 41.91)
+text("ISOLATION", 113.03, 168.91, 1.27)
+gline([(119.38, 48.26), (119.38, 166.37)], dash=True)
 
 sch = """(kicad_sch (version 20230121) (generator eeschema)
   (uuid %s)
   (paper "A4")
-  (title_block (title "Safety inputs: 2 e-stops + 2 lidars") (date "2026-10-02") (rev "0.9")
+  (title_block (title "Safety inputs: 2 e-stops + 2 lidars") (date "2026-10-02") (rev "1.0")
     (comment 1 "Generated by generate.py - edit the script, not this file"))
   (lib_symbols
     %s)

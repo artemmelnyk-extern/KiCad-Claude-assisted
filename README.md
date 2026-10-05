@@ -42,6 +42,11 @@ All four channels are the same; only the terminal wiring and the resistor value 
 
 Every wiring failure reads as "stop".
 
+- **The e-stop buttons are external.** The schematic draws them left of the terminal block, in a
+  dashed box marked "EXTERNAL - not on the board": S1 between `ES1+` and `ES1`, S2 between `ES2+` and
+  `ES2`, each with one normally-closed contact (two terminals). They are drawings only, so they
+  appear in neither the netlist nor the board. Which button is front and which is rear is a choice
+  made at installation; the sheet labels S1 front and S2 rear.
 - **Terminal block J1**, top to bottom: `24V`, `0V`, `L1`, `ES2+`, `ES2`, `ES1+`, `ES1`, `L2`, `0V`.
   The order follows the channels on the board.
 - **F1 (T2A)** protects the 24 V wires that leave the board for the buttons.
