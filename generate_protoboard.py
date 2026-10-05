@@ -123,14 +123,11 @@ buses.append([(R_BUS0V, c) for c in range(first_k - 2, 18)])
 buses.append([(1, 9), (2, 9), (2, 10)])                                 # 0V screw 9 -> 0V screw 10
 buses.append([(r, 10) for r in range(1, R_BUS0V + 1)])                  # 0V screw 10 -> down to the bus
 buses.append([(r, 18) for r in range(1, 7)] + [(6, 17), (7, 17), (R_BUS0V, 17)])    # 0V screw 18 -> bus
-# fused 24 V: 24V screw -> down column 8 -> fuse -> column 6 -> wire to the ES+ screw
-part("F1", "F", "T2A", [("1", (5, 8)), ("2", (5, 6))])
-buses.append([(r, 8) for r in range(1, 6)])
-buses.append([(5, 6), (6, 6), (7, 6)])
-ends[(7, 6)] = "24V fused"
-buses.append([(r, 13) for r in range(1, LAND_ROW + 1)])
-ends[(LAND_ROW, 13)] = "ES+"
-wires.append(((7, 6), (LAND_ROW, 13), "tab:red", "fused 24 V to the ES+ screw"))
+# fused 24 V, AS BUILT: the fuse lies in row 4 with its legs spread to columns 8 and 13, so it
+# joins the 24V screw (column 8) to the ES+ screw (column 13) directly. No wire needed.
+part("F1", "F", "T2A", [("1", (LAND_ROW, 8)), ("2", (LAND_ROW, 13))])
+buses.append([(r, 8) for r in range(1, LAND_ROW + 1)])                  # 24V screw -> fuse
+buses.append([(r, 13) for r in range(1, LAND_ROW + 1)])                 # fuse -> ES+ screw
 # inputs: screw -> bare wire down to the landing row -> insulated wire to the channel
 for ch, k, name, pin, rval in CHANNELS:
     th = TERM_HOLES[TERMINALS.index(name)]
@@ -269,8 +266,9 @@ def draw(S, fname, **save):
             ax.add_patch(Circle((xs[0] - 0.5, ys[0] - 1.5), 0.3, fc="white", ec="none", zorder=5))
             ax.text(sum(xs) / 4, sum(ys) / 4, ref, color="white", ha="center", va="center", fontsize=4.5 * fs, zorder=6)
         elif kind == "F":
-            ax.add_patch(Circle((sum(xs) / 2, ys[0]), 4.25, fc="#f4c7c7", ec=colour[kind], lw=0.5 * lw, zorder=4, alpha=0.85))
-            ax.text(sum(xs) / 2, ys[0] + 1.7, "%s %s" % (ref, value), ha="center", va="center", fontsize=4.2 * fs, zorder=6)
+            ax.plot(xs, ys, color="#999", lw=1.2 * lw, zorder=4)                       # the two spread legs
+            ax.add_patch(Rectangle((sum(xs) / 2 - 4.25, ys[0] - 2.0), 8.5, 4.0, fc="#e9a59a", ec=colour[kind], lw=0.5 * lw, zorder=5))
+            ax.text(sum(xs) / 2, ys[0], "%s %s" % (ref, value), ha="center", va="center", fontsize=3.9 * fs, zorder=6)
         else:
             ax.plot(xs, ys, color=colour[kind], lw=4.2 * lw, solid_capstyle="round", zorder=4)
             ax.text(sum(xs) / 2, sum(ys) / 2, ref, ha="center", va="center", fontsize=3.3 * fs, zorder=6,
@@ -339,7 +337,7 @@ def main():
              "", "## 1. Parts", "", "| Part | Value | Holes | Note |", "|---|---|---|---|"]
     note = {"R": "stands upright; body on the first hole", "LED": "first hole = anode (long leg)",
             "D": "stands upright; first hole = cathode (band)", "U": "holes in pin order 1, 2, 3, 4; pin 1 = dot",
-            "F": "", "C": "optional; either way round"}
+            "F": "lies flat, legs spread 5 holes apart; either way round", "C": "optional; either way round"}
     for ref, kind, value, holes in parts:
         lines.append("| %s | %s | %s | %s |" % (ref, value, "; ".join(hole(h) for h in holes), note[kind]))
     lines += ["", "Screw terminals: three 3-way blocks (2.54 mm pitch) along row 1, wire entry towards the top edge:", "",

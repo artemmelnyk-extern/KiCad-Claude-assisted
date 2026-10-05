@@ -107,7 +107,9 @@ FOOTPRINTS = {
     "CONN3_1": "TerminalBlock:TerminalBlock_Xinya_XY308-2.54-3P_1x03_P2.54mm_Horizontal",
     "CONN3_2": "TerminalBlock:TerminalBlock_Xinya_XY308-2.54-3P_1x03_P2.54mm_Horizontal",
     "CONN3_3": "TerminalBlock:TerminalBlock_Xinya_XY308-2.54-3P_1x03_P2.54mm_Horizontal",
-    "FUSE_H": "Fuse:Fuse_Littelfuse_372_D8.50mm",
+    # as built, the fuse lies flat with its legs spread to 12.7 mm; no library fuse has that pitch,
+    # so an axial outline of the same length stands in for it in the board model
+    "FUSE_H": "Resistor_THT:R_Axial_DIN0309_L9.0mm_D3.2mm_P12.70mm_Horizontal",
     "UNO_R4_WIFI": "Module:Arduino_UNO_R3",
 }
 

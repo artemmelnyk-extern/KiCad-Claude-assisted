@@ -43,7 +43,7 @@ KiCad netlist, and every hole it uses exists on the board as mapped in the scrip
 | U4 | PC817 | row 14, col 15; row 14, col 14; row 17, col 14; row 17, col 15 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
 | R8 | 10k | row 18, col 15; row 19, col 15 | stands upright; body on the first hole |
 | C4 | 100n opt. | row 19, col 16; row 19, col 17 | optional; either way round |
-| F1 | T2A | row 5, col 8; row 5, col 6 |  |
+| F1 | T2A | row 4, col 8; row 4, col 13 | lies flat, legs spread 5 holes apart; either way round |
 
 Screw terminals: three 3-way blocks (2.54 mm pitch) along row 1, wire entry towards the top edge:
 
@@ -134,8 +134,7 @@ The board has no 24 V source of its own and draws about 13 mA. Never join `0V` t
 | row 1, col 9 | row 2, col 9 | row 2, col 10 |
 | row 1, col 10 | straight | row 8, col 10 |
 | row 1, col 18 | row 6, col 18; row 6, col 17 | row 8, col 17 |
-| row 1, col 8 | straight | row 5, col 8 |
-| row 5, col 6 | straight | row 7, col 6 |
+| row 1, col 8 | straight | row 4, col 8 |
 | row 1, col 13 | straight | row 4, col 13 |
 | row 1, col 14 | straight | row 4, col 14 |
 | row 1, col 15 | straight | row 4, col 15 |
@@ -151,7 +150,6 @@ The board has no 24 V source of its own and draws about 13 mA. Never join `0V` t
 | row 18, col 10 | header pad **D3** (row 22, col 19) | output |
 | row 18, col 13 | header pad **D4** (row 21, col 19) | output |
 | row 18, col 16 | header pad **D5** (row 20, col 19) | output |
-| row 7, col 6 | row 4, col 13 | fused 24 V to the ES+ screw |
 | row 4, col 14 | row 9, col 5 | input |
 | row 4, col 15 | row 9, col 8 | input |
 | row 4, col 19 | row 9, col 11 | input |

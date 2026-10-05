@@ -343,7 +343,7 @@
   (symbol (lib_id "bench:FUSE_H") (at 77.47 96.52 0) (unit 1) (in_bom yes) (on_board yes) (dnp no) (uuid b4582fae-2c89-5cea-81bd-2e141826a074)
     (property "Reference" "F1" (at 76.2 93.98 0) (effects (font (size 1.27 1.27))))
     (property "Value" "T2A" (at 80.01 93.98 0) (effects (font (size 1.27 1.27))))
-    (property "Footprint" "Fuse:Fuse_Littelfuse_372_D8.50mm" (at 77.47 96.52 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Footprint" "Resistor_THT:R_Axial_DIN0309_L9.0mm_D3.2mm_P12.70mm_Horizontal" (at 77.47 96.52 0) (effects (font (size 1.27 1.27)) hide))
     (property "Datasheet" "" (at 77.47 96.52 0) (effects (font (size 1.27 1.27)) hide))
     (pin "1" (uuid af9a7c61-7665-5470-bbff-fb151d99d764)) (pin "2" (uuid fe95de75-abb1-5c38-8eb1-43eb51b56cb3))
     (instances (project "pc817_bench" (path "/6f1d2c1e-0a4b-4c55-9a51-2b8f0c817001" (reference "F1") (unit 1)))))
