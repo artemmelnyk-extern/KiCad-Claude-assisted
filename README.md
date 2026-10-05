@@ -42,6 +42,10 @@ All four channels are the same; only the terminal wiring and the resistor value 
 
 Every wiring failure reads as "stop".
 
+- **The 24 V comes from an external source.** The board has none of its own: connect the source's
+  plus to the `24V` screw and its minus to a `0V` screw. The board draws about 13 mA from it (the two
+  e-stop loops). The lidars must share this same 0 V. The schematic draws the source in the
+  "EXTERNAL" box.
 - **The e-stop buttons are external.** The schematic draws them left of the terminal block, in a
   dashed box marked "EXTERNAL - not on the board": S1 between `ES1+` and `ES1`, S2 between `ES2+` and
   `ES2`, each with one normally-closed contact (two terminals). They are drawings only, so they

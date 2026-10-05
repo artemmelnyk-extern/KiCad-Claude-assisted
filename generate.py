@@ -222,14 +222,25 @@ def gcircle(x, y, r):
                  % (x + DX, y, r, uid()))
 
 
-def external_estops(j1):
-    """Draw the two emergency-stop buttons left of the terminal block: they are wired in the
-    field, not mounted on the board. Each has one normally-closed contact (two terminals)."""
+def external_wiring(j1):
+    """Draw, left of the terminal block, what is wired to it in the field and is NOT on the
+    board: the 24 V source and the two emergency-stop buttons (one normally-closed contact,
+    two terminals each)."""
     edge = 27.94 - 7.62                      # left edge of the J1 symbol
-    rows = {n: j1[str(i + 1)][1] for i, n in enumerate(J1_PINS)}
-    buttons = [(1, "S1  FRONT"), (2, "S2  REAR")]
-    ys = []
-    for k, name in buttons:
+    rows = {}
+    for i, n in enumerate(J1_PINS):
+        rows.setdefault(n, j1[str(i + 1)][1])           # first screw of each name
+    ys = [rows["24V_IN"], rows["0V"]]
+    # 24 V source: + to the 24V screw, - to a 0V screw
+    bx, y_p, y_m = -11.0, rows["24V_IN"], rows["0V"]
+    gline([(edge, y_p), (bx, y_p), (bx, y_p + 0.75)])
+    gline([(bx - 1.6, y_p + 0.75), (bx + 1.6, y_p + 0.75)], width=0.3)          # long plate = +
+    gline([(bx - 0.8, y_p + 1.6), (bx + 0.8, y_p + 1.6)], width=0.5)            # short plate = -
+    gline([(bx, y_p + 1.6), (bx, y_m), (edge, y_m)])
+    text("+", bx + 2.0, y_p + 0.9, 1.2)
+    text("24 V DC source", bx + 4.0, y_p - 0.6, 1.1)
+    # emergency-stop buttons
+    for k, name in ((1, "S1  FRONT"), (2, "S2  REAR")):
         y_ret = rows["ES%d" % k]
         y_plus = rows.get("ES%d+" % k, rows.get("ES+"))      # own screw, or the shared one
         col = 7.62 - 2.54 * (k - 1)
@@ -240,14 +251,14 @@ def external_estops(j1):
         gline([(10.16, y_ret), (col, y_ret), (col, y_plus), (edge, y_plus)])    # feed wire from ES+
         text(name, 3.0 if col > 6 else 0.5, y_ret + 0.6 + (1.9 if y_plus < y_ret - 3 else 0), 1.1, right=True)
         ys += [y_ret, y_plus]
-    top, bottom = min(ys) - 12.7, max(ys) + (12.4 if "ES+" in rows else 8.9)   # more room when one screw feeds both
-    gline([(-12.0, top), (18.4, top), (18.4, bottom), (-12.0, bottom), (-12.0, top)], dash=True)
-    for n, line in enumerate(("EXTERNAL - not on the board", "Emergency-stop buttons:", "1 NC contact, 2 terminals.",
-                              "Pressed = open = STOP.")):
-        text(line, -11.0, top + 2.6 + 2.1 * n, 1.2 if n == 0 else 1.1)
-    text("S1 = ES1 = pin D2", -11.0, bottom - 4.4, 1.1)
-    text("S2 = ES2 = pin D3", -11.0, bottom - 2.4, 1.1)
-    text("front / rear: your choice", -11.0, bottom - 0.5, 1.0)
+    top, bottom = min(ys) - 14.5, max(ys) + (12.4 if "ES+" in rows else 8.9)   # more room when one screw feeds both
+    gline([(-14.5, top), (18.4, top), (18.4, bottom), (-14.5, bottom), (-14.5, top)], dash=True)
+    for n, line in enumerate(("EXTERNAL - not on the board", "24 V source: + to 24V, - to 0V.",
+                              "Emergency-stop buttons:", "1 NC contact, 2 terminals.", "Pressed = open = STOP.")):
+        text(line, -13.5, top + 2.6 + 2.1 * n, 1.2 if n == 0 else 1.1)
+    text("S1 = ES1 = pin D2", -8.0, bottom - 4.4, 1.1)
+    text("S2 = ES2 = pin D3", -8.0, bottom - 2.4, 1.1)
+    text("front / rear: your choice", -8.0, bottom - 0.5, 1.0)
 
 
 def channel(k, y):
@@ -289,7 +300,7 @@ for i, name in enumerate(J1_NETS[1:], start=2):
     p = j1[str(i)]
     end = (p[0] + 10.16, p[1])
     wire(p, end); label(name, end, right=True)
-external_estops(j1)
+external_wiring(j1)
 a1 = place("UNO_R4_WIFI", "A1", "UNO R4 WiFi or UNO Q", 200.66, 111.76, ref_dy=-26.67, val_dy=26.67)
 UNO_NETS = {UNO_NUM[n]: net for n, net in
             {"IOREF": "IOREF", "GND1": "GND", "GND2": "GND",
