@@ -58,6 +58,18 @@ Screw terminals, 5.08 mm pitch, along row 1, wire entry towards the top edge:
 | `0V` | row 1, col 18 |
 | `0V` | row 1, col 20 |
 
+### What plugs into each screw
+
+| Screw | Connect |
+|---|---|
+| `24V` | **plus of the external 24 V source** |
+| `0V` (either) | **minus of the external 24 V source**; also the lidars' 0 V |
+| `ES+` | one terminal of each e-stop button (fused 24 V going out) |
+| `ES1`, `ES2` | the other terminal of button 1, of button 2 |
+| `L1`, `L2` | safety output of lidar 1, of lidar 2 |
+
+The board has no 24 V source of its own and draws about 13 mA. Never join `0V` to the Arduino's `GND`.
+
 ## 2. Solder side: bridges between neighbouring pads
 
 | From | To |

@@ -278,8 +278,15 @@ def draw(S, fname, **save):
         ax.add_patch(Rectangle((x - 0.95 * P, y - 0.6 * P), 1.9 * P, 2.9 * P, fc="#7fd58a", ec="#273", lw=0.4 * lw, zorder=4, alpha=0.9))
         ax.add_patch(Circle((x, y), 0.42, fc="#222", ec="none", zorder=7))
         ax.text(x, y + 1.35 * P, name, ha="center", va="center", fontsize=4.4 * fs, weight="bold", zorder=6)
-    ax.text((TERM_HOLES[0][1] + TERM_HOLES[-1][1]) / 2 * P, 3.4 * P, "wires enter from this side (USB end of the Arduino)",
+    ax.text((TERM_HOLES[0][1] + TERM_HOLES[-1][1]) / 2 * P, 4.0 * P, "wires enter from this side (USB end of the Arduino)",
             ha="center", va="center", fontsize=4.2 * fs)
+    # where the external 24 V source plugs in
+    x24 = TERM_HOLES[TERMINALS.index("24V")][1] * P
+    x0v = [h[1] * P for h, n in zip(TERM_HOLES, TERMINALS) if n == "0V"]
+    ax.annotate("EXTERNAL 24 V SOURCE:  +", xy=(x24, 2.35 * P), xytext=(x24 - 0.2 * P, 3.15 * P), ha="right", va="center",
+                fontsize=4.2 * fs, weight="bold", color="#b00", arrowprops=dict(arrowstyle="->", color="#b00", lw=0.9 * lw))
+    ax.annotate("-  (either 0V screw)", xy=(x0v[0], 2.35 * P), xytext=(x0v[0] - 0.4 * P, 3.15 * P), ha="right", va="center",
+                fontsize=4.2 * fs, weight="bold", color="#024", arrowprops=dict(arrowstyle="->", color="#024", lw=0.9 * lw))
     # component side: insulated wires
     for a_, b_, col, _ in wires:
         (x1, y1) = xy(a_)
@@ -332,6 +339,14 @@ def main():
               "| Terminal | Hole |", "|---|---|"]
     for h, name in zip(TERM_HOLES, TERMINALS):
         lines.append("| `%s` | %s |" % (name, hole(h)))
+    lines += ["", "### What plugs into each screw", "",
+              "| Screw | Connect |", "|---|---|",
+              "| `24V` | **plus of the external 24 V source** |",
+              "| `0V` (either) | **minus of the external 24 V source**; also the lidars' 0 V |",
+              "| `ES+` | one terminal of each e-stop button (fused 24 V going out) |",
+              "| `ES1`, `ES2` | the other terminal of button 1, of button 2 |",
+              "| `L1`, `L2` | safety output of lidar 1, of lidar 2 |", "",
+              "The board has no 24 V source of its own and draws about 13 mA. Never join `0V` to the Arduino's `GND`."]
     lines += ["", "## 2. Solder side: bridges between neighbouring pads", "", "| From | To |", "|---|---|"]
     for p, q in bridges:
         lines.append("| %s | %s |" % (hole(p), hole(q)))
