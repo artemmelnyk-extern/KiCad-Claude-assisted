@@ -43,27 +43,29 @@ KiCad netlist, and every hole it uses exists on the board as mapped in the scrip
 | U4 | PC817 | row 14, col 15; row 14, col 14; row 17, col 14; row 17, col 15 | holes in pin order 1, 2, 3, 4; pin 1 = dot |
 | R8 | 10k | row 18, col 15; row 19, col 15 | stands upright; body on the first hole |
 | C4 | 100n opt. | row 19, col 16; row 19, col 17 | optional; either way round |
-| F1 | T2A | row 6, col 6; row 6, col 8 |  |
+| F1 | T2A | row 5, col 8; row 5, col 6 |  |
 
-Screw terminals, 5.08 mm pitch, along row 1, wire entry towards the top edge:
+Screw terminals: three 3-way blocks (2.54 mm pitch) along row 1, wire entry towards the top edge:
 
 | Terminal | Hole |
 |---|---|
-| `24V` | row 1, col 6 |
-| `ES+` | row 1, col 8 |
-| `ES1` | row 1, col 10 |
-| `ES2` | row 1, col 12 |
-| `L1` | row 1, col 14 |
-| `L2` | row 1, col 16 |
+| `24V` | row 1, col 8 |
+| `0V` | row 1, col 9 |
+| `0V` | row 1, col 10 |
+| `ES+` | row 1, col 13 |
+| `ES1` | row 1, col 14 |
+| `ES2` | row 1, col 15 |
 | `0V` | row 1, col 18 |
-| `0V` | row 1, col 20 |
+| `L1` | row 1, col 19 |
+| `L2` | row 1, col 20 |
 
 ### What plugs into each screw
 
 | Screw | Connect |
 |---|---|
 | `24V` | **plus of the external 24 V source** |
-| `0V` (either) | **minus of the external 24 V source**; also the lidars' 0 V |
+| `0V` (column 9 or 10) | **minus of the external 24 V source** |
+| `0V` (column 18) | the lidars' 0 V |
 | `ES+` | one terminal of each e-stop button (fused 24 V going out) |
 | `ES1`, `ES2` | the other terminal of button 1, of button 2 |
 | `L1`, `L2` | safety output of lidar 1, of lidar 2 |
@@ -129,14 +131,16 @@ The board has no 24 V source of its own and draws about 13 mA. Never join `0V` t
 | row 10, col 15 | straight | row 12, col 15 |
 | row 14, col 14 | row 14, col 13 | row 8, col 13 |
 | row 8, col 4 | straight | row 8, col 17 |
+| row 1, col 9 | row 2, col 9 | row 2, col 10 |
+| row 1, col 10 | straight | row 8, col 10 |
 | row 1, col 18 | row 6, col 18; row 6, col 17 | row 8, col 17 |
-| row 1, col 20 | row 4, col 20 | row 4, col 18 |
-| row 1, col 6 | straight | row 6, col 6 |
-| row 6, col 8 | straight | row 1, col 8 |
-| row 1, col 10 | straight | row 4, col 10 |
-| row 1, col 12 | straight | row 4, col 12 |
+| row 1, col 8 | straight | row 5, col 8 |
+| row 5, col 6 | straight | row 7, col 6 |
+| row 1, col 13 | straight | row 4, col 13 |
 | row 1, col 14 | straight | row 4, col 14 |
-| row 1, col 16 | straight | row 4, col 16 |
+| row 1, col 15 | straight | row 4, col 15 |
+| row 1, col 19 | straight | row 4, col 19 |
+| row 1, col 20 | straight | row 4, col 20 |
 | row 20, col 6 | straight | row 20, col 15 |
 
 ## 4. Component side: insulated wires
@@ -147,10 +151,11 @@ The board has no 24 V source of its own and draws about 13 mA. Never join `0V` t
 | row 18, col 10 | header pad **D3** (row 22, col 19) | output |
 | row 18, col 13 | header pad **D4** (row 21, col 19) | output |
 | row 18, col 16 | header pad **D5** (row 20, col 19) | output |
-| row 4, col 10 | row 9, col 5 | input |
-| row 4, col 12 | row 9, col 8 | input |
-| row 4, col 14 | row 9, col 11 | input |
-| row 4, col 16 | row 9, col 14 | input |
+| row 7, col 6 | row 4, col 13 | fused 24 V to the ES+ screw |
+| row 4, col 14 | row 9, col 5 | input |
+| row 4, col 15 | row 9, col 8 | input |
+| row 4, col 19 | row 9, col 11 | input |
+| row 4, col 20 | row 9, col 14 | input |
 | row 20, col 16 | header pad **IOREF** (row 12, col 2) | logic supply reference |
 | row 18, col 5 | row 18, col 8 | logic GND |
 | row 18, col 8 | row 18, col 11 | logic GND |

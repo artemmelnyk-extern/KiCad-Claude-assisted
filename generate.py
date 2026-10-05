@@ -63,7 +63,9 @@ PINS = {
     "LED_H": {"2": (-3.81, 0), "1": (3.81, 0)},          # 2 = anode (left), 1 = cathode (right)
     "D_V": {"1": (0, 3.81), "2": (0, -3.81)},            # 1 = cathode (top), 2 = anode (bottom)
     "PC817": {"1": (-7.62, 2.54), "2": (-7.62, -2.54), "4": (7.62, 2.54), "3": (7.62, -2.54)},
-    "CONN8": {str(i + 1): (5.08, 8.89 - 2.54 * i) for i in range(8)},
+    "CONN3_1": {str(i + 1): (5.08, 2.54 - 2.54 * i) for i in range(3)},
+    "CONN3_2": {str(i + 1): (5.08, 2.54 - 2.54 * i) for i in range(3)},
+    "CONN3_3": {str(i + 1): (5.08, 2.54 - 2.54 * i) for i in range(3)},
     "FUSE_H": {"1": (-3.81, 0), "2": (3.81, 0)},
 }
 
@@ -102,16 +104,19 @@ FOOTPRINTS = {
     "LED_H": "LED_THT:LED_D3.0mm",
     "D_V": "Diode_THT:D_DO-35_SOD27_P2.54mm_Vertical_CathodeUp",
     "PC817": "Package_DIP:DIP-4_W7.62mm",
-    "CONN8": "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-8-5.08_1x08_P5.08mm_Horizontal",
+    "CONN3_1": "TerminalBlock:TerminalBlock_Xinya_XY308-2.54-3P_1x03_P2.54mm_Horizontal",
+    "CONN3_2": "TerminalBlock:TerminalBlock_Xinya_XY308-2.54-3P_1x03_P2.54mm_Horizontal",
+    "CONN3_3": "TerminalBlock:TerminalBlock_Xinya_XY308-2.54-3P_1x03_P2.54mm_Horizontal",
     "FUSE_H": "Fuse:Fuse_Littelfuse_372_D8.50mm",
     "UNO_R4_WIFI": "Module:Arduino_UNO_R3",
 }
 
 
-# PROTO-SHIELD VARIANT of the terminal block: 8 screws at 5.08 mm, top to bottom.
-# Both e-stop buttons share the ES+ screw; each lidar output goes between Ln and a 0V screw.
-J1_PINS = ["24V_IN", "ES+", "ES1", "ES2", "L1", "L2", "0V", "0V"]
-J1_NETS = ["+24V_IN", "+24V", "ES1", "ES2", "L1", "L2", "GND_24V", "GND_24V"]
+# PROTO-SHIELD VARIANT of the terminals, as built: three 3-way screw blocks at 2.54 mm.
+# Both e-stop buttons share the ES+ screw. (reference, value, screw names, nets)
+J_BLOCKS = [("J1", "24 V supply", ["24V_IN", "0V", "0V"], ["+24V_IN", "GND_24V", "GND_24V"]),
+            ("J2", "e-stops", ["ES+", "ES1", "ES2"], ["+24V", "ES1", "ES2"]),
+            ("J3", "lidars", ["0V", "L1", "L2"], ["GND_24V", "L1", "L2"])]
 
 # channel number: (input net, Arduino pin, series resistor value, what it reads)
 CHANNELS = {
@@ -154,9 +159,9 @@ LIB = [
             poly([(1.778, -0.508), (3.81, -2.54), (5.08, -2.54)])],
            [pin("1", "A", -7.62, 2.54, 0, 2.54), pin("2", "K", -7.62, -2.54, 0, 2.54),
             pin("4", "C", 7.62, 2.54, 180, 2.54), pin("3", "E", 7.62, -2.54, 180, 2.54)]),
-    libsym("CONN8", "J", [rect(-7.62, -11.43, 2.54, 11.43, "background")],
-           [pin(str(i + 1), n, 5.08, 8.89 - 2.54 * i, 180, 2.54) for i, n in enumerate(J1_PINS)],
-           hide_names=False, name_offset=0.508),
+    *[libsym("CONN3_%d" % (b + 1), "J", [rect(-7.62, -5.08, 2.54, 5.08, "background")],
+             [pin(str(i + 1), n, 5.08, 2.54 - 2.54 * i, 180, 2.54) for i, n in enumerate(names)],
+             hide_names=False, name_offset=0.508) for b, (_, _, names, _) in enumerate(J_BLOCKS)],
     libsym("FUSE_H", "F", [rect(-2.54, -1.016, 2.54, 1.016), poly([(-2.54, 0), (2.54, 0)])],
            [pin("1", "~", -3.81, 0, 0), pin("2", "~", 3.81, 0, 180)]),
     libsym("UNO_R4_WIFI", "A", [rect(-12.7, -24.13, 12.7, 24.13, "background")], uno_pins(),
@@ -222,14 +227,11 @@ def gcircle(x, y, r):
                  % (x + DX, y, r, uid()))
 
 
-def external_wiring(j1):
+def external_wiring(rows):
     """Draw, left of the terminal block, what is wired to it in the field and is NOT on the
     board: the 24 V source and the two emergency-stop buttons (one normally-closed contact,
     two terminals each)."""
     edge = 27.94 - 7.62                      # left edge of the J1 symbol
-    rows = {}
-    for i, n in enumerate(J1_PINS):
-        rows.setdefault(n, j1[str(i + 1)][1])           # first screw of each name
     ys = [rows["24V_IN"], rows["0V"]]
     # 24 V source: + to the 24V screw, - to a 0V screw
     bx, y_p, y_m = -11.0, rows["24V_IN"], rows["0V"]
@@ -292,15 +294,20 @@ for k, y in ((1, 63.5), (2, 93.98), (3, 124.46), (4, 154.94)):
     channel(k, y)
 
 # connectors
-j1 = place("CONN8", "J1", "24V, e-stops, lidars", 27.94, 111.76, ref_dx=-2.54, ref_dy=-13.97, val_dx=-2.54, val_dy=13.97)
-f1 = place("FUSE_H", "F1", "T2A", 46.99, j1["1"][1], ref_dx=-1.27, ref_dy=-2.54, val_dx=2.54, val_dy=-2.54)
-wire(j1["1"], f1["1"])                                         # supply in -> fuse
-wire(f1["2"], (f1["2"][0] + 5.08, f1["2"][1])); label("+24V", (f1["2"][0] + 5.08, f1["2"][1]), right=True)
-for i, name in enumerate(J1_NETS[1:], start=2):
-    p = j1[str(i)]
-    end = (p[0] + 10.16, p[1])
-    wire(p, end); label(name, end, right=True)
-external_wiring(j1)
+screw_y = {}                                                   # screw name -> y, first screw of each name
+for b, (ref, value, names, nets) in enumerate(J_BLOCKS):
+    j = place("CONN3_%d" % (b + 1), ref, value, 27.94, 99.06 + 12.7 * b, ref_dx=-2.54, ref_dy=-6.35, val_dx=-2.54, val_dy=6.6)
+    for i, (name, netname) in enumerate(zip(names, nets), start=1):
+        p = j[str(i)]
+        screw_y.setdefault(name, p[1])
+        if name == "24V_IN":                                   # supply in -> fuse -> +24V
+            f1 = place("FUSE_H", "F1", "T2A", 46.99, p[1], ref_dx=-1.27, ref_dy=-2.54, val_dx=2.54, val_dy=-2.54)
+            wire(p, f1["1"])
+            wire(f1["2"], (f1["2"][0] + 5.08, f1["2"][1])); label("+24V", (f1["2"][0] + 5.08, f1["2"][1]), right=True)
+        else:
+            end = (p[0] + 10.16, p[1])
+            wire(p, end); label(netname, end, right=True)
+external_wiring(screw_y)
 a1 = place("UNO_R4_WIFI", "A1", "UNO R4 WiFi or UNO Q", 200.66, 111.76, ref_dy=-26.67, val_dy=26.67)
 UNO_NETS = {UNO_NUM[n]: net for n, net in
             {"IOREF": "IOREF", "GND1": "GND", "GND2": "GND",
@@ -326,7 +333,7 @@ sch = """(kicad_sch (version 20230121) (generator eeschema)
   (uuid %s)
   (paper "A4")
   (title_block (title "Safety inputs: 2 e-stops + 2 lidars") (date "2026-10-02") (rev "1.0")
-    (comment 1 "Generated by generate.py - edit the script, not this file") (comment 2 "PROTO-SHIELD VARIANT: 2.54 mm grid footprints, 8-way terminal"))
+    (comment 1 "Generated by generate.py - edit the script, not this file") (comment 2 "PROTO-SHIELD VARIANT: 2.54 mm grid footprints, three 3-way terminal blocks"))
   (lib_symbols
     %s)
   %s

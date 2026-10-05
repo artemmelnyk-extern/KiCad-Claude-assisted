@@ -50,9 +50,13 @@ HEADER_LABELS = {(11, 2): "", (12, 2): "IOREF", (13, 2): "RES", (14, 2): "3V3", 
 JACK = (1, 2, 5, 5)                             # rows 1-5, columns 2-5: above the Arduino's power jack
 
 # ----------------------------------------------------------------------------- the plan
-# Screw terminals, 5.08 mm pitch (every second hole), along row 1, wires entering from the top.
-TERMINALS = ["24V", "ES+", "ES1", "ES2", "L1", "L2", "0V", "0V"]
-TERM_HOLES = [(1, 6 + 2 * i) for i in range(len(TERMINALS))]
+# Screw terminals AS SOLDERED on the board: three 3-way blocks, 2.54 mm pitch, along row 1,
+# wires entering from the top. (block reference, [(screw name, column), ...])
+TERM_BLOCKS = [("J1", [("24V", 8), ("0V", 9), ("0V", 10)]),
+               ("J2", [("ES+", 13), ("ES1", 14), ("ES2", 15)]),
+               ("J3", [("0V", 18), ("L1", 19), ("L2", 20)])]
+TERMINALS = [n for _, screws in TERM_BLOCKS for n, _ in screws]
+TERM_HOLES = [(1, c) for _, screws in TERM_BLOCKS for _, c in screws]
 LAND_ROW = 4                                    # first row clear of the terminal block's body
 
 # channel: (schematic number, first of its two columns, input name, Arduino pin, resistor value)
@@ -114,16 +118,20 @@ for ch, k, name, pin, rval in CHANNELS:
     wires.append(((R_OUT, k + 1), pin, "tab:blue", "output"))
 
 first_k, last_k = CHANNELS[0][1], CHANNELS[-1][1]
-# 0V bus along row 8, joined to the two 0V terminals through column 18 / 17
+# 0V bus along row 8, joined to the three 0V screws
 buses.append([(R_BUS0V, c) for c in range(first_k - 2, 18)])
-t0v = [h for h, n in zip(TERM_HOLES, TERMINALS) if n == "0V"]
-buses.append([(r, t0v[0][1]) for r in range(1, 7)] + [(6, 17), (7, 17), (R_BUS0V, 17)])
-buses.append([(r, t0v[1][1]) for r in range(1, 5)] + [(4, 19), (4, 18)])
-# fused 24 V: 24V terminal -> down column 6 -> fuse -> up column 8 -> ES+ terminal
-part("F1", "F", "T2A", [("1", (6, 6)), ("2", (6, 8))])
-buses.append([(r, 6) for r in range(1, 7)])
-buses.append([(r, 8) for r in range(6, 0, -1)])
-# inputs: terminal -> bare wire down to the landing row -> insulated wire to the channel
+buses.append([(1, 9), (2, 9), (2, 10)])                                 # 0V screw 9 -> 0V screw 10
+buses.append([(r, 10) for r in range(1, R_BUS0V + 1)])                  # 0V screw 10 -> down to the bus
+buses.append([(r, 18) for r in range(1, 7)] + [(6, 17), (7, 17), (R_BUS0V, 17)])    # 0V screw 18 -> bus
+# fused 24 V: 24V screw -> down column 8 -> fuse -> column 6 -> wire to the ES+ screw
+part("F1", "F", "T2A", [("1", (5, 8)), ("2", (5, 6))])
+buses.append([(r, 8) for r in range(1, 6)])
+buses.append([(5, 6), (6, 6), (7, 6)])
+ends[(7, 6)] = "24V fused"
+buses.append([(r, 13) for r in range(1, LAND_ROW + 1)])
+ends[(LAND_ROW, 13)] = "ES+"
+wires.append(((7, 6), (LAND_ROW, 13), "tab:red", "fused 24 V to the ES+ screw"))
+# inputs: screw -> bare wire down to the landing row -> insulated wire to the channel
 for ch, k, name, pin, rval in CHANNELS:
     th = TERM_HOLES[TERMINALS.index(name)]
     buses.append([(r, th[1]) for r in range(1, LAND_ROW + 1)])
@@ -219,11 +227,11 @@ def xy(h):
 def draw(S, fname, **save):
     """S = drawing scale: 1 for the 1:1 print, 3 for the screen image."""
     fs, lw = 0.75 * S, 0.5 * S           # font and line-width factors
-    w_mm, h_mm = (COLS + 5.0) * P, (ROWS + 9.5) * P
+    w_mm, h_mm = (COLS + 5.0) * P, (ROWS + 10.8) * P
     fig = plt.figure(figsize=(S * w_mm / 25.4, S * h_mm / 25.4))
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_xlim(-2.2 * P, (COLS + 2.8) * P)
-    ax.set_ylim(-(ROWS + 5.2) * P, 4.3 * P)
+    ax.set_ylim(-(ROWS + 5.2) * P, 5.6 * P)
     ax.set_aspect("equal"); ax.axis("off")
     ax.add_patch(Rectangle((0.2 * P, -(ROWS + 0.8) * P), (COLS + 0.6) * P, (ROWS + 1.4) * P, fc="#dcefd6", ec="#3a6", lw=0.8 * lw))
     r0, c0, r1, c1 = JACK
@@ -272,21 +280,20 @@ def draw(S, fname, **save):
                 ax.text(kx + (1.15 if kind == "LED" else -1.15), ky, "K", ha="left" if kind == "LED" else "right", va="center", fontsize=3.2 * fs, color="#333", zorder=6)
         for p in pts:
             ax.add_patch(Circle(p, 0.42, fc="#222", ec="none", zorder=7))
-    # terminals
-    for h, name in zip(TERM_HOLES, TERMINALS):
-        x, y = xy(h)
-        ax.add_patch(Rectangle((x - 0.95 * P, y - 0.6 * P), 1.9 * P, 2.9 * P, fc="#7fd58a", ec="#273", lw=0.4 * lw, zorder=4, alpha=0.9))
-        ax.add_patch(Circle((x, y), 0.42, fc="#222", ec="none", zorder=7))
-        ax.text(x, y + 1.35 * P, name, ha="center", va="center", fontsize=4.4 * fs, weight="bold", zorder=6)
-    ax.text((TERM_HOLES[0][1] + TERM_HOLES[-1][1]) / 2 * P, 4.0 * P, "wires enter from this side (USB end of the Arduino)",
-            ha="center", va="center", fontsize=4.2 * fs)
+    # terminals: three 3-way blocks
+    for ref, screws in TERM_BLOCKS:
+        c0, c1 = screws[0][1], screws[-1][1]
+        ax.add_patch(Rectangle(((c0 - 0.7) * P, -1.6 * P), (c1 - c0 + 1.4) * P, 3.6 * P, fc="#c9ccd1", ec="#555", lw=0.4 * lw, zorder=4, alpha=0.9))
+        ax.text((c0 + c1) / 2 * P, 2.35 * P, ref, ha="center", va="center", fontsize=3.6 * fs, color="#333", zorder=6)
+        for name, c in screws:
+            ax.add_patch(Circle((c * P, -P), 0.42, fc="#222", ec="none", zorder=7))
+            ax.text(c * P, 0.95 * P, name, ha="center", va="center", fontsize=3.9 * fs, weight="bold", zorder=6, rotation=90)
+    ax.text(14 * P, 4.9 * P, "wires enter from this side (USB end of the Arduino)", ha="center", va="center", fontsize=4.2 * fs)
     # where the external 24 V source plugs in
-    x24 = TERM_HOLES[TERMINALS.index("24V")][1] * P
-    x0v = [h[1] * P for h, n in zip(TERM_HOLES, TERMINALS) if n == "0V"]
-    ax.annotate("EXTERNAL 24 V SOURCE:  +", xy=(x24, 2.35 * P), xytext=(x24 - 0.2 * P, 3.15 * P), ha="right", va="center",
+    ax.annotate("EXTERNAL 24 V SOURCE:  +", xy=(8 * P, 2.1 * P), xytext=(7.4 * P, 3.7 * P), ha="right", va="center",
                 fontsize=4.2 * fs, weight="bold", color="#b00", arrowprops=dict(arrowstyle="->", color="#b00", lw=0.9 * lw))
-    ax.annotate("-  (either 0V screw)", xy=(x0v[0], 2.35 * P), xytext=(x0v[0] - 0.4 * P, 3.15 * P), ha="right", va="center",
-                fontsize=4.2 * fs, weight="bold", color="#024", arrowprops=dict(arrowstyle="->", color="#024", lw=0.9 * lw))
+    ax.annotate("-", xy=(9 * P, 2.1 * P), xytext=(9.6 * P, 3.7 * P), ha="center", va="center",
+                fontsize=6 * fs, weight="bold", color="#024", arrowprops=dict(arrowstyle="->", color="#024", lw=0.9 * lw))
     # component side: insulated wires
     for a_, b_, col, _ in wires:
         (x1, y1) = xy(a_)
@@ -335,14 +342,15 @@ def main():
             "F": "", "C": "optional; either way round"}
     for ref, kind, value, holes in parts:
         lines.append("| %s | %s | %s | %s |" % (ref, value, "; ".join(hole(h) for h in holes), note[kind]))
-    lines += ["", "Screw terminals, 5.08 mm pitch, along row 1, wire entry towards the top edge:", "",
+    lines += ["", "Screw terminals: three 3-way blocks (2.54 mm pitch) along row 1, wire entry towards the top edge:", "",
               "| Terminal | Hole |", "|---|---|"]
     for h, name in zip(TERM_HOLES, TERMINALS):
         lines.append("| `%s` | %s |" % (name, hole(h)))
     lines += ["", "### What plugs into each screw", "",
               "| Screw | Connect |", "|---|---|",
               "| `24V` | **plus of the external 24 V source** |",
-              "| `0V` (either) | **minus of the external 24 V source**; also the lidars' 0 V |",
+              "| `0V` (column 9 or 10) | **minus of the external 24 V source** |",
+              "| `0V` (column 18) | the lidars' 0 V |",
               "| `ES+` | one terminal of each e-stop button (fused 24 V going out) |",
               "| `ES1`, `ES2` | the other terminal of button 1, of button 2 |",
               "| `L1`, `L2` | safety output of lidar 1, of lidar 2 |", "",

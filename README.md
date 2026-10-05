@@ -173,8 +173,8 @@ is the one on `main`; three things differ so that it fits a proto shield with is
 2.54 mm grid:
 
 - resistors and the 1N4148 are mounted upright (2.54 mm footprints);
-- the terminal block is 8-way at 5.08 mm, with one `ES+` screw shared by both buttons;
-  the schematic on this branch draws both external buttons fed from that one screw;
+- the terminals are three 3-way screw blocks at 2.54 mm, as soldered on the built board: `24V`, `0V`,
+  `0V` (supply), `ES+`, `ES1`, `ES2` (e-stops, sharing the `ES+` screw), `0V`, `L1`, `L2` (lidars);
 - `kicad/pc817_bench.kicad_pcb` is a **model of the build**: parts on the grid, solder bridges and
   bare-wire runs as tracks on the solder side, insulated wires as lines on the `Cmts.User` layer.
 

@@ -91,7 +91,8 @@ def net(name):
 TARGET = {}
 for h, (ref, num) in plan.legs.items():
     TARGET.setdefault(ref, {})[num] = h
-TARGET["J1"] = {str(i + 1): h for i, h in enumerate(plan.TERM_HOLES)}
+for ref, screws in plan.TERM_BLOCKS:                 # three 3-way screw blocks along row 1
+    TARGET[ref] = {str(i + 1): (1, col) for i, (_, col) in enumerate(screws)}
 
 FPS = {}
 
