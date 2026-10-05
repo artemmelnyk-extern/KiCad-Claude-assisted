@@ -59,12 +59,13 @@ TERMINALS = [n for _, screws in TERM_BLOCKS for n, _ in screws]
 TERM_HOLES = [(1, c) for _, screws in TERM_BLOCKS for _, c in screws]
 LAND_ROW = 4                                    # first row clear of the terminal block's body
 
-# channel: (schematic number, first of its two columns, input name, Arduino pin, resistor value)
-CHANNELS = [(1, 6, "ES1", "D2", "3.3k 1/2W"), (2, 9, "ES2", "D3", "3.3k 1/2W"),
-            (3, 12, "L1", "D4", "4.7k 1/2W"), (4, 15, "L2", "D5", "4.7k 1/2W")]
-# Each channel runs DOWN the board in two neighbouring columns k, k+1 (k+2 is its spare column):
-R_BUS0V, R_R1, R_R2, R_DA, R_LED_A, R_LED_K, R_U12, R_U43, R_OUT, R_C, R_IOREF = 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20
-ISOLATION_ROWS = (15, 16)                       # under the optocouplers: nothing here
+# channel: (schematic number, main column k, input name, Arduino pin, resistor value)
+# AS BUILT: the four optocoupler sockets sit in rows 12 and 15, columns (7,8) (10,11) (13,14) (16,17).
+CHANNELS = [(1, 8, "ES1", "D2", "3.3k 1/2W"), (2, 11, "ES2", "D3", "3.3k 1/2W"),
+            (3, 14, "L1", "D4", "4.7k 1/2W"), (4, 17, "L2", "D5", "4.7k 1/2W")]
+# Each channel runs DOWN the board in column k; column k-1 carries its 0V wire on the 24 V side.
+R_BUS0V, R_R1, R_R2, R_DK, R_LED_A, R_LED_K, R_U12, R_U43, R_CAP, R_WIRE, R_PU2, R_PU1, R_IOREF = 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20
+ISOLATION_ROWS = (13, 14)                       # under the optocouplers: nothing here
 
 legs = {}        # hole -> (ref, pin)        part legs
 ends = {}        # hole -> name              terminals and wire landings
@@ -86,64 +87,57 @@ def bridge(a, b):
     bridges.append((a, b))
 
 
+first_k, last_k = CHANNELS[0][1], CHANNELS[-1][1]
 for ch, k, name, pin, rval in CHANNELS:
-    # k is the channel's main column; k-1 its second column, k-2 its spare column (0V strip).
-    # 24 V side, top to bottom
+    # 24 V side, top to bottom, all in column k
     part("R%d" % ch, "R", rval, [("1", (R_R1, k)), ("2", (R_R2, k))])              # upright, body on pin 1
-    ends[(R_R1, k - 1)] = "%s in" % name
-    bridge((R_R1, k - 1), (R_R1, k))                                                # input wire -> resistor
-    buses.append([(r, k) for r in range(R_R2, R_LED_A + 1)])                        # resistor -> LED anode
-    part("D%d" % ch, "LED", "LED", [("2", (R_LED_A, k)), ("1", (R_LED_K, k))])      # 2 = anode
-    part("D%d" % (ch + 4), "D", "1N4148", [("1", (R_LED_A, k - 1)), ("2", (R_DA, k - 1))])   # 1 = cathode
-    bridge((R_LED_A, k), (R_LED_A, k - 1))                                          # LED anode -> diode cathode
-    bridge((R_DA, k - 1), (R_DA, k - 2))                                            # diode anode -> 0V strip
-    # PC817 seen from above: pin 1 top right, 2 top left, 3 bottom left, 4 bottom right
+    part("D%d" % (ch + 4), "D", "1N4148", [("1", (R_DK, k)), ("2", (R_DK, k - 1))])   # cathode in column k,
+    part("D%d" % ch, "LED", "LED", [("2", (R_LED_A, k)), ("1", (R_LED_K, k))])        # anode on the 0V wire
+    bridge((R_R2, k), (R_DK, k))                                                    # resistor -> diode cathode
+    bridge((R_DK, k), (R_LED_A, k))                                                 # ... -> LED anode
+    bridge((R_LED_K, k), (R_U12, k))                                                # LED cathode -> pin 1
+    # PC817 in its socket, seen from above: pin 1 top right, 2 top left, 3 bottom left, 4 bottom right
     part("U%d" % ch, "U", "PC817", [("1", (R_U12, k)), ("2", (R_U12, k - 1)),
                                     ("3", (R_U43, k - 1)), ("4", (R_U43, k))])
-    bridge((R_LED_K, k), (R_U12, k))                                                # LED cathode -> pin 1
-    # 0V strip in the channel's spare column, from pin 2 up to the 0V bus
-    buses.append([(R_U12, k - 1), (R_U12, k - 2)] + [(r, k - 2) for r in range(R_U12 - 1, R_BUS0V - 1, -1)])
+    buses.append([(r, k - 1) for r in range(R_U12, R_BUS0V - 1, -1)])               # pin 2 -> up to the 0V bus (built)
     # logic side
-    part("R%d" % (ch + 4), "R", "10k", [("2", (R_OUT, k)), ("1", (R_C, k))])        # pull-up, upright
-    bridge((R_U43, k), (R_OUT, k))                                                  # collector -> pull-up
-    bridge((R_C, k), (R_IOREF, k))                                                  # pull-up -> IOREF bus
-    ends[(R_OUT, k + 1)] = "%s out" % pin
-    bridge((R_OUT, k + 1), (R_OUT, k))                                              # ... -> output wire landing
-    ends[(R_OUT, k - 1)] = "GND"
-    bridge((R_U43, k - 1), (R_OUT, k - 1))                                          # emitter -> GND wire landing
-    # optional filter capacitor, in the two columns right of the channel
-    part("C%d" % ch, "C", "100n opt.", [("1", (R_C, k + 1)), ("2", (R_C, k + 2))])
-    bridge((R_OUT, k + 1), (R_C, k + 1))                                            # output landing -> capacitor
-    bridge((R_OUT, k + 2), (R_C, k + 2))                                            # GND pad -> capacitor
-    wires.append(((R_OUT, k + 1), pin, "tab:blue", "output"))
+    part("C%d" % ch, "C", "100n opt.", [("1", (R_CAP, k)), ("2", (R_CAP, k - 1))])  # optional filter capacitor
+    bridge((R_U43, k), (R_CAP, k)); bridge((R_CAP, k), (R_WIRE, k))                 # collector -> output wire pad
+    bridge((R_U43, k - 1), (R_CAP, k - 1)); bridge((R_CAP, k - 1), (R_WIRE, k - 1)) # emitter -> GND wire pad
+    ends[(R_WIRE, k)] = "%s out" % pin
+    ends[(R_WIRE, k - 1)] = "GND"
+    part("R%d" % (ch + 4), "R", "10k", [("2", (R_PU2, k)), ("1", (R_PU1, k))])      # pull-up, upright
+    bridge((R_WIRE, k), (R_PU2, k))                                                 # output -> pull-up
+    bridge((R_PU1, k), (R_IOREF, k))                                                # pull-up -> IOREF bus
+    wires.append(((R_WIRE, k), pin, "tab:blue", "output"))
 
-first_k, last_k = CHANNELS[0][1], CHANNELS[-1][1]
-# 0V bus along row 8, joined to the three 0V screws
-buses.append([(R_BUS0V, c) for c in range(first_k - 2, 18)])
-buses.append([(1, 9), (2, 9), (2, 10)])                                 # 0V screw 9 -> 0V screw 10
-buses.append([(r, 10) for r in range(1, R_BUS0V + 1)])                  # 0V screw 10 -> down to the bus
-buses.append([(r, 18) for r in range(1, 7)] + [(6, 17), (7, 17), (R_BUS0V, 17)])    # 0V screw 18 -> bus
+# 0V bus along row 6 (built), fed from the two 0V terminals of J1 down column 10
+buses.append([(R_BUS0V, c) for c in range(first_k - 1, last_k)])
+buses.append([(1, 9), (2, 9), (2, 10)])                                 # 0V terminal 9 -> 0V terminal 10 (built)
+buses.append([(r, 10) for r in range(1, R_BUS0V + 1)])                  # 0V terminal 10 -> down to the bus (built)
+buses.append([(r, 18) for r in range(1, 6)] + [(5, 17), (5, 16), (R_BUS0V, 16)])    # 0V terminal 18 -> bus
 # fused 24 V, AS BUILT: the fuse lies in row 4 with its legs spread to columns 8 and 13, so it
-# joins the 24V screw (column 8) to the ES+ screw (column 13) directly. No wire needed.
+# joins the 24V terminal (column 8) to the ES+ terminal (column 13) directly.
 part("F1", "F", "T2A", [("1", (LAND_ROW, 8)), ("2", (LAND_ROW, 13))])
-buses.append([(r, 8) for r in range(1, LAND_ROW + 1)])                  # 24V screw -> fuse
-buses.append([(r, 13) for r in range(1, LAND_ROW + 1)])                 # fuse -> ES+ screw
-# inputs: screw -> bare wire down to the landing row -> insulated wire to the channel
+buses.append([(r, 8) for r in range(1, LAND_ROW + 1)])                  # 24V terminal -> fuse (built)
+buses.append([(r, 13) for r in range(1, LAND_ROW + 1)])                 # fuse -> ES+ terminal (built)
+# inputs: terminal -> bare wire down to the landing row -> insulated wire to a pad beside the resistor
 for ch, k, name, pin, rval in CHANNELS:
     th = TERM_HOLES[TERMINALS.index(name)]
+    land = (R_R1, k + 1) if k < last_k else (R_BUS0V, k)        # no column 18 in these rows: use the pad above
     buses.append([(r, th[1]) for r in range(1, LAND_ROW + 1)])
     ends[(LAND_ROW, th[1])] = name
-    wires.append(((LAND_ROW, th[1]), (R_R1, k - 1), "tab:orange", "input"))
+    ends[land] = "%s in" % name
+    bridge(land, (R_R1, k))
+    wires.append(((LAND_ROW, th[1]), land, "tab:orange", "input"))
 for h, name in zip(TERM_HOLES, TERMINALS):
     ends[h] = "T:" + name
 # IOREF bus along row 20
-buses.append([(R_IOREF, c) for c in range(first_k, last_k + 1)])
-ends[(R_IOREF, last_k + 1)] = "IOREF"
-bridge((R_IOREF, last_k), (R_IOREF, last_k + 1))
-wires.append(((R_IOREF, last_k + 1), "IOREF", "tab:purple", "logic supply reference"))
-# logic GND: daisy chain along row 18, then to the header
-gnd = [(R_OUT, k - 1) for _, k, _, _, _ in CHANNELS] + [(R_OUT, last_k + 2)]
-ends[gnd[-1]] = "GND"
+buses.append([(R_IOREF, c) for c in range(first_k - 1, last_k + 1)])
+ends[(R_IOREF, first_k - 1)] = "IOREF"
+wires.append(((R_IOREF, first_k - 1), "IOREF", "tab:purple", "logic supply reference"))
+# logic GND: daisy chain along row 17, then to the header
+gnd = [(R_WIRE, k - 1) for _, k, _, _, _ in CHANNELS]
 for a, b in zip(gnd, gnd[1:]):
     wires.append((a, b, "black", "logic GND"))
 wires.append((gnd[0], "GND", "black", "logic GND"))
@@ -334,6 +328,7 @@ def main():
              "- `layout.pdf` prints at 1:1 at 100 % scale.",
              "- Rows %d and %d stay empty: they are the isolation gap under the optocouplers." % ISOLATION_ROWS,
              "- Rows 1-5 of columns 2-5 are above the Arduino's power jack: nothing is soldered there.",
+             "- The PC817 sit in sockets. Insert each with its **dot towards the terminals, on the higher-numbered column** of its pair.",
              "", "## 1. Parts", "", "| Part | Value | Holes | Note |", "|---|---|---|---|"]
     note = {"R": "stands upright; body on the first hole", "LED": "first hole = anode (long leg)",
             "D": "stands upright; first hole = cathode (band)", "U": "holes in pin order 1, 2, 3, 4; pin 1 = dot",
